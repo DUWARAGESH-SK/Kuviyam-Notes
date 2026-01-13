@@ -1,5 +1,5 @@
 import { storage } from './utils/storage';
-import { NoteDraft } from './types';
+import type { NoteDraft } from './types';
 
 console.log("Kuviyam Background Script Loaded");
 
