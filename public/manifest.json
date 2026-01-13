@@ -1,0 +1,44 @@
+{
+    "manifest_version": 3,
+    "name": "Kuviyam",
+    "version": "1.0.0",
+    "description": "A lightweight, privacy-first browser-based note-taking extension.",
+    "permissions": [
+        "storage",
+        "activeTab",
+        "scripting",
+        "contextMenus",
+        "sidePanel"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "action": {
+        "default_popup": "index.html",
+        "default_title": "Kuviyam"
+    },
+    "background": {
+        "service_worker": "src/background.ts",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "src/content.tsx"
+            ]
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "assets/*"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
+}
