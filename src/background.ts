@@ -11,7 +11,6 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
-// Handle Context Menu Click
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === "save-to-kuviyam" && info.selectionText) {
         const draft: NoteDraft = {
@@ -33,12 +32,19 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }
 });
 
-// Handle Keyboard Shortcuts
+// ✅ KEYBOARD SHORTCUT HANDLER
 chrome.commands.onCommand.addListener((command) => {
     if (command === "toggle-panel") {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs[0]?.id) {
-                chrome.tabs.sendMessage(tabs[0].id, { action: "toggle-panel" });
+            const tabId = tabs[0]?.id;
+            if (tabId) {
+                // Check if we can sendMessage (skip restricted pages check here, let content script handle or fail silently)
+                chrome.tabs.sendMessage(tabId, {
+                    type: "KUV_TOGGLE_PANEL"
+                }).catch(() => {
+                    // Content script might not be loaded on this tab (e.g. edge://)
+                    console.log("Could not send toggle command to tab", tabId);
+                });
             }
         });
     }
