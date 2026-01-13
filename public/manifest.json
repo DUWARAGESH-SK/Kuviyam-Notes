@@ -1,14 +1,15 @@
 {
     "manifest_version": 3,
     "name": "Kuviyam",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "A lightweight, privacy-first browser-based note-taking extension.",
     "permissions": [
         "storage",
         "activeTab",
         "scripting",
         "contextMenus",
-        "sidePanel"
+        "sidePanel",
+        "tabs"
     ],
     "host_permissions": [
         "<all_urls>"
@@ -34,9 +35,9 @@
     "commands": {
         "toggle-panel": {
             "suggested_key": {
-                "default": "Ctrl+Shift+K",
-                "mac": "Command+Shift+K",
-                "windows": "Ctrl+Shift+K"
+                "default": "Alt+Shift+P",
+                "mac": "Alt+Shift+P",
+                "windows": "Alt+Shift+P"
             },
             "description": "Toggle Kuviyam Floating Panel"
         }
