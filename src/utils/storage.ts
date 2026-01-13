@@ -1,9 +1,9 @@
-import { Note, NoteDraft } from '../types';
+import type { Note, NoteDraft } from '../types';
 
 export const storage = {
     async getNotes(): Promise<Note[]> {
         const result = await chrome.storage.local.get('notes');
-        return result.notes || [];
+        return (result.notes as Note[]) || [];
     },
 
     async saveNote(note: Note): Promise<void> {
