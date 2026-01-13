@@ -30,6 +30,18 @@ function App() {
     setNotes(loadedNotes);
   };
 
+  const handleTogglePanel = async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      try {
+        await chrome.tabs.sendMessage(tab.id, { action: "toggle-panel" });
+        window.close(); // Close popup after action
+      } catch (e) {
+        console.error("Could not toggle panel - maybe restart extension?");
+      }
+    }
+  };
+
   // Derived State
   const allTags = Array.from(new Set(notes.flatMap(n => n.tags)));
 
@@ -90,14 +102,25 @@ function App() {
       <header className="p-4 border-b border-white/5 bg-tokyo-bg/50 backdrop-blur-sm z-10 flex flex-col gap-3">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold text-tokyo-accent tracking-tight">Kuviyam</h1>
-          {view === 'list' && (
+          <div className="flex items-center gap-2">
+            {/* Toggle Button for Floating Panel */}
             <button
-              onClick={handleCreateNote}
-              className="w-8 h-8 rounded-full bg-tokyo-accent text-tokyo-bg flex items-center justify-center hover:scale-105 transition-transform font-bold"
+              onClick={handleTogglePanel}
+              className="px-2 py-1 text-xs bg-tokyo-card border border-tokyo-accent/30 rounded hover:bg-tokyo-accent hover:text-tokyo-bg transition-colors"
+              title="Open Persistent Floating Panel (Ctrl+Shift+K)"
             >
-              +
+              📌 Open Panel
             </button>
-          )}
+
+            {view === 'list' && (
+              <button
+                onClick={handleCreateNote}
+                className="w-8 h-8 rounded-full bg-tokyo-accent text-tokyo-bg flex items-center justify-center hover:scale-105 transition-transform font-bold"
+              >
+                +
+              </button>
+            )}
+          </div>
         </div>
 
         {view === 'list' && (
