@@ -10,8 +10,6 @@ let root: any = null;
 
 // ✅ 1. LISTENER FOR MESSAGES (Popup & Shortcut)
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    // Return true to indicate async response if needed (good practice)
-
     if (msg.type === "KUV_OPEN_PANEL") {
         mountPanel(true); // Force open
     } else if (msg.type === "KUV_TOGGLE_PANEL") {
@@ -73,16 +71,16 @@ async function mountPanel(forceOpen = false) {
 
         // Defaults
         layout.isOpen = true;
-        layout.width = 350;
-        layout.height = 400;
-        layout.x = window.innerWidth - 400;
+        layout.width = 400;
+        layout.height = 500;
+        layout.x = window.innerWidth - 450;
         layout.y = 50;
         await storage.savePanelLayout(layout);
     }
 
     if (forceOpen) {
         layout.isOpen = true;
-        updateOpenState(true);
+        await updateOpenState(true);
     }
 
     renderApp(layout, scratchpad);
@@ -129,10 +127,17 @@ function renderApp(layout: PanelLayout, note: Note) {
     );
 }
 
-// ✅ 3. AUTO-REOPEN ON TAB SWITCH (Persistence)
-chrome.storage.local.get("panelLayout", (res: any) => {
-    if (res.panelLayout && res.panelLayout.isOpen) {
-        console.log("Restoring Kuviyam Panel...");
-        mountPanel();
+// ✅ 3. AUTO-RESTORE ON PAGE LOAD (Critical for tab persistence!)
+(async function autoRestore() {
+    try {
+        const layout = await storage.getPanelLayout();
+        console.log("[Kuviyam] Checking auto-restore. isOpen:", layout.isOpen);
+
+        if (layout.isOpen) {
+            console.log("[Kuviyam] Restoring panel...");
+            await mountPanel(false); // Don't force, just restore
+        }
+    } catch (err) {
+        console.error("[Kuviyam] Auto-restore failed:", err);
     }
-});
+})();
