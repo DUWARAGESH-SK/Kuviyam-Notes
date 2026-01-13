@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Kuviyam",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "A lightweight, privacy-first browser-based note-taking extension.",
     "permissions": [
         "storage",
@@ -28,6 +28,8 @@
                 "<all_urls>"
             ],
             "js": [
+                "assets/storage.BN3LtyeU.js",
+                "assets/NoteEditor.BF_GQmtV.js",
                 "src/content.js"
             ],
             "css": [
