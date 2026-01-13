@@ -18,7 +18,7 @@
         "default_title": "Kuviyam"
     },
     "background": {
-        "service_worker": "src/background.ts",
+        "service_worker": "src/background.js",
         "type": "module"
     },
     "content_scripts": [
@@ -27,7 +27,7 @@
                 "<all_urls>"
             ],
             "js": [
-                "src/content.tsx"
+                "src/content.js"
             ]
         }
     ],
