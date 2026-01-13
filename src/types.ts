@@ -8,7 +8,16 @@ export interface Note {
     url?: string;  // For contextual notes
     domain?: string; // For filtering by site
     pinned: boolean;
-    position?: { x: number; y: number }; // For floating notes
+    position?: { x: number; y: number }; // Legacy field
 }
 
 export type NoteDraft = Omit<Note, 'id' | 'createdAt' | 'updatedAt'>;
+
+export interface PanelLayout {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    isMinimized: boolean;
+    isOpen: boolean;
+}

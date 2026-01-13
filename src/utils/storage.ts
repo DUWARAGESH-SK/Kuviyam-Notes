@@ -1,4 +1,4 @@
-import type { Note, NoteDraft } from '../types';
+import type { Note, NoteDraft, PanelLayout } from '../types';
 
 export const storage = {
     async getNotes(): Promise<Note[]> {
@@ -36,7 +36,12 @@ export const storage = {
         await chrome.storage.local.set({ notes: filtered });
     },
 
-    async clearAll_DEBUG(): Promise<void> {
-        await chrome.storage.local.clear();
+    async getPanelLayout(): Promise<PanelLayout> {
+        const result = await chrome.storage.local.get('panelLayout');
+        return (result.panelLayout as PanelLayout) || { x: 50, y: 50, width: 320, height: 400, isMinimized: false, isOpen: true };
+    },
+
+    async savePanelLayout(layout: PanelLayout): Promise<void> {
+        await chrome.storage.local.set({ panelLayout: layout });
     }
 };
