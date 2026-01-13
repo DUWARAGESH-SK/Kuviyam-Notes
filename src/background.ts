@@ -11,6 +11,7 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
+// Handle Context Menu Click
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === "save-to-kuviyam" && info.selectionText) {
         const draft: NoteDraft = {
@@ -24,11 +25,21 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
         try {
             await storage.createNote(draft);
-            // Optional: Notify user
             chrome.action.setBadgeText({ text: "OK" });
             setTimeout(() => chrome.action.setBadgeText({ text: "" }), 2000);
         } catch (err) {
             console.error("Failed to save note", err);
         }
+    }
+});
+
+// Handle Keyboard Shortcuts
+chrome.commands.onCommand.addListener((command) => {
+    if (command === "toggle-panel") {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]?.id) {
+                chrome.tabs.sendMessage(tabs[0].id, { action: "toggle-panel" });
+            }
+        });
     }
 });
