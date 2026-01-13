@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Kuviyam",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "A lightweight, privacy-first browser-based note-taking extension.",
     "permissions": [
         "storage",
@@ -19,7 +19,7 @@
         "default_title": "Kuviyam"
     },
     "background": {
-        "service_worker": "src/background.js",
+        "service_worker": "src/background.ts",
         "type": "module"
     },
     "content_scripts": [
@@ -28,14 +28,8 @@
                 "<all_urls>"
             ],
             "js": [
-                "assets/storage.BN3LtyeU.js",
-                "assets/NoteEditor.BF_GQmtV.js",
-                "src/content.js"
-            ],
-            "css": [
-                "assets/main.C0ctY9Vx.css"
-            ],
-            "run_at": "document_end"
+                "src/content.tsx"
+            ]
         }
     ],
     "commands": {
@@ -47,16 +41,5 @@
             },
             "description": "Toggle Kuviyam Floating Panel"
         }
-    },
-    "web_accessible_resources": [
-        {
-            "resources": [
-                "assets/*",
-                "src/*"
-            ],
-            "matches": [
-                "<all_urls>"
-            ]
-        }
-    ]
+    }
 }
