@@ -38,12 +38,19 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
         <div className="flex flex-col h-full">
             <div className="flex justify-between items-center mb-4">
                 <button onClick={onCancel} className="text-sm text-tokyo-fg opacity-70 hover:opacity-100">Cancel</button>
-                <button
-                    onClick={handleSave}
-                    className="bg-tokyo-accent text-tokyo-bg px-4 py-1 rounded font-bold text-sm hover:brightness-110"
-                >
-                    Save
-                </button>
+                <div className="flex gap-2 items-center">
+                    {initialNote?.domain && (
+                        <span className="text-xs bg-tokyo-accent/10 text-tokyo-accent px-2 py-0.5 rounded border border-tokyo-accent/20 truncate max-w-[120px]">
+                            {initialNote.domain}
+                        </span>
+                    )}
+                    <button
+                        onClick={handleSave}
+                        className="bg-tokyo-accent text-tokyo-bg px-4 py-1 rounded font-bold text-sm hover:brightness-110"
+                    >
+                        Save
+                    </button>
+                </div>
             </div>
 
             <input

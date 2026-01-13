@@ -9,8 +9,17 @@ function App() {
   const [view, setView] = useState<'list' | 'edit'>('list');
   const [editingNote, setEditingNote] = useState<Note | null>(null);
 
+  const [currentDomain, setCurrentDomain] = useState<string>('');
+
   useEffect(() => {
     loadNotes();
+    chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+      if (tab?.url) {
+        try {
+          setCurrentDomain(new URL(tab.url).hostname);
+        } catch (e) { /* ignore invalid urls */ }
+      }
+    });
   }, []);
 
   const loadNotes = async () => {
@@ -18,8 +27,24 @@ function App() {
     setNotes(loadedNotes);
   };
 
-  const handleCreateNote = () => {
-    setEditingNote(null);
+  const siteNotes = currentDomain ? notes.filter(n => n.domain === currentDomain) : [];
+  const otherNotes = currentDomain ? notes.filter(n => n.domain !== currentDomain) : notes;
+
+  const handleCreateNote = async () => {
+    // Get current tab info
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    setEditingNote({
+      id: '',
+      title: tab?.title || '',
+      content: '',
+      createdAt: 0,
+      updatedAt: 0,
+      tags: [],
+      url: tab?.url,
+      domain: tab?.url ? new URL(tab.url).hostname : undefined,
+      pinned: false
+    } as Note); // Cast as Note for initial state, though it's technically a draft
     setView('edit');
   };
 
@@ -76,15 +101,36 @@ function App() {
               <button onClick={handleCreateNote} className="text-tokyo-accent text-sm hover:underline">Create one</button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {notes.map(note => (
-                <NoteCard
-                  key={note.id}
-                  note={note}
-                  onClick={handleEditNote}
-                  onDelete={handleDeleteNote}
-                />
-              ))}
+            <div className="space-y-6">
+              {siteNotes.length > 0 && (
+                <div>
+                  <h2 className="text-xs font-bold text-tokyo-fg/50 uppercase tracking-wider mb-2">Current Site</h2>
+                  <div className="space-y-3">
+                    {siteNotes.map(note => (
+                      <NoteCard
+                        key={note.id}
+                        note={note}
+                        onClick={handleEditNote}
+                        onDelete={handleDeleteNote}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h2 className="text-xs font-bold text-tokyo-fg/50 uppercase tracking-wider mb-2">Recent Notes</h2>
+                <div className="space-y-3">
+                  {otherNotes.map(note => (
+                    <NoteCard
+                      key={note.id}
+                      note={note}
+                      onClick={handleEditNote}
+                      onDelete={handleDeleteNote}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           )
         ) : (
