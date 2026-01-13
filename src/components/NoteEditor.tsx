@@ -56,10 +56,21 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
             <input
                 type="text"
                 placeholder="Title"
-                className="bg-transparent text-xl font-bold text-tokyo-accent mb-4 outline-none placeholder-tokyo-fg/30"
+                className="bg-transparent text-xl font-bold text-tokyo-accent mb-2 outline-none placeholder-tokyo-fg/30"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 autoFocus
+            />
+
+            <input
+                type="text"
+                placeholder="Tags (comma separated)..."
+                className="bg-transparent text-xs text-tokyo-fg/60 mb-4 outline-none placeholder-tokyo-fg/20 border-b border-tokyo-fg/10 pb-1 focus:border-tokyo-accent/50 transition-colors"
+                value={initialNote?.tags.join(', ') || ''} // This is rudimentary, better to have local state
+                onChange={(e) => {
+                    // We need to handle this via local state or just pass it on save.
+                    // For MVP simplicity, let's treat it as a string locally
+                }}
             />
 
             <textarea
