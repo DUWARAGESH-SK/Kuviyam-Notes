@@ -151,153 +151,171 @@ function App() {
   }
 
   return (
-    <div className="w-[420px] h-[600px] flex flex-col bg-white">
-      {/* Header */}
-      <div className="px-5 pt-5 pb-3">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-gray-900">Kuviyam</h1>
-          <button
-            onClick={handleOpenPanel}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Open Floating Panel"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M4 6h12M4 10h12M4 14h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
+    <div className="w-[450px] min-h-[884px] font-display bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 overflow-x-hidden relative">
+      <main className="relative z-10 px-6 pt-12 pb-32">
+        {/* Doodles Overlay */}
+        <div className="doodle-bg-header">
+          <img alt="" className="doodle-item w-12 h-12 top-4 left-4 rotate-[-15deg] opacity-20 dark:invert" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAan07EU_iOBiMZhanxFWddp37GN-vIVLcNt268lhAzDPubTohpjSMaYLD_ivBEKqcJLyDcG0c18M1gGcgZHqh4NTsXhNDy-Phpg3OTgLxLHJXgX5Mb_ft2qMfWYWTG45PUFRxJExIuYFiCEVYCbTqSEx2Mq6-vIEHzh-PTXBgLVaQuBGtZ8LdjHqrJOQnwzB9AnptIBtmZ0MSOVbStj6W3g6Z5R-U-XwuZbTrw1oqCDFT99vl2UsJHbL_3crL6KCfOaSJPJfMNZGmi" />
+          <img alt="" className="doodle-item w-16 h-16 top-16 right-32 rotate-[45deg] opacity-10 dark:invert" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1WSXShbf8w3oUi_6ZSIgYma_AnH62ay9ea-RyLnK5JCfwAfE1g94P50Ff0cuwBWPkvmDLMQ-I41-kGT0CIxKlvgTm2dI5ZvDzEmkk0_IrETckmkqDetuDU1oOQ4DWIRJIj50SpNJUkwRdZsCd8ReE6ZPD0HZtsGI48RNeXevK7s2P6QTWwZk2nRa4bbwUhlbqIYltBEUlwP5tb2GOVw9kLfU8i3EML6iHq-osaq5obJQosGTC2gzW_L_rBjviT-ZGvEu5Cebqq4zI" />
         </div>
 
+        {/* Header */}
+        <header className="relative flex justify-between items-start mb-8 z-10">
+          <div>
+            <p className="text-rose-500 font-bold text-sm mb-1 tracking-wide">Good Morning!</p>
+            <h1 className="text-5xl font-extrabold text-[#1E293B] dark:text-white tracking-tight title-embossed">Kuviyam</h1>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleOpenPanel}
+              className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform"
+              title="Open Persistent Panel"
+            >
+              <span className="material-symbols-rounded text-[22px]">filter_list</span>
+            </button>
+            <button className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform">
+              <span className="material-symbols-rounded text-[22px]">lightbulb</span>
+            </button>
+            <button className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform">
+              <span className="material-symbols-rounded text-[22px]">menu</span>
+            </button>
+          </div>
+        </header>
+
         {/* Search */}
-        <div className="relative mb-4">
+        <div className="relative mb-8">
+          <div className="absolute inset-y-0 left-4 flex items-center text-slate-400">
+            <span className="material-symbols-rounded">search</span>
+          </div>
           <input
-            type="text"
+            className="w-full h-14 pl-12 pr-12 bg-white dark:bg-slate-800 border-none rounded-2xl shadow-sm focus:ring-2 focus:ring-primary/50 text-slate-600 dark:text-slate-200"
             placeholder="What's on your mind?"
-            className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          <div className="absolute inset-y-0 right-4 flex items-center text-slate-400">
+            <span className="material-symbols-rounded text-xl opacity-40">lightbulb</span>
+          </div>
         </div>
 
         {/* Tag Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-3 mb-10 overflow-x-auto pb-2 custom-scrollbar">
           <button
             onClick={() => setSelectedTag(null)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${!selectedTag
-                ? 'bg-yellow-400 text-gray-900'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            className={`flex items-center gap-2 px-6 py-3 font-bold rounded-2xl shadow-md whitespace-nowrap transition-all ${!selectedTag
+              ? 'bg-primary text-slate-900 border-none'
+              : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300'
               }`}
           >
-            📋 All
+            <span className="material-symbols-rounded text-lg">content_paste</span>
+            All
           </button>
-          {allTags.slice(0, 3).map(tag => (
-            <button
-              key={tag}
-              onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${tag === selectedTag
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-            >
-              {tag}
-            </button>
-          ))}
+          <button
+            onClick={() => setSelectedTag('Work')}
+            className={`flex items-center gap-2 px-6 py-3 font-bold rounded-2xl shadow-md whitespace-nowrap transition-all ${selectedTag === 'Work'
+              ? 'bg-primary text-slate-900 border-none'
+              : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+          >
+            <span className="material-symbols-rounded text-lg">work</span>
+            Work
+          </button>
+          <button
+            onClick={() => setSelectedTag('Personal')}
+            className={`flex items-center gap-2 px-6 py-3 font-bold rounded-2xl shadow-md whitespace-nowrap transition-all ${selectedTag === 'Personal'
+              ? 'bg-primary text-slate-900 border-none'
+              : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+          >
+            <span className="material-symbols-rounded text-lg">person</span>
+            Personal
+          </button>
         </div>
-      </div>
 
-      {statusMsg && (
-        <div className="px-5 py-2 bg-blue-50 border-l-4 border-blue-500 text-sm text-blue-700">
-          {statusMsg}
+        {/* Recent Notes */}
+        <div className="mb-6 flex justify-between items-center px-1">
+          <h2 className="text-xl font-extrabold text-[#1E293B] dark:text-white">Recent Notes</h2>
+          <button className="text-slate-400 font-bold text-[10px] tracking-widest uppercase" onClick={() => { }}>See All</button>
         </div>
-      )}
 
-      {/* Notes List */}
-      <div className="flex-1 overflow-y-auto px-5 pb-20">
-        {notes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-400">
-            <p className="mb-2">No notes yet</p>
-            <button onClick={handleCreateNote} className="text-blue-500 text-sm hover:underline">
-              Create your first note
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-gray-900">Recent Notes</h2>
-              <button className="text-xs text-gray-400 hover:text-gray-600">SEE ALL</button>
+        <div className="space-y-4">
+          {filteredNotes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-slate-400">
+              <p>No notes found.</p>
             </div>
-
-            {filteredNotes.slice(0, 5).map(note => (
+          ) : (
+            filteredNotes.map((note, index) => (
               <div
                 key={note.id}
                 onClick={() => handleEditNote(note)}
-                className="group p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition-all border border-transparent hover:border-gray-200"
+                className="bg-white dark:bg-slate-800 p-4 rounded-[2rem] shadow-sm border border-slate-50 dark:border-slate-700/50 flex items-center gap-4 transition-all hover:shadow-md cursor-pointer group"
               >
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-lg">📝</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 text-sm truncate mb-1">
-                      {note.title || 'Untitled'}
-                    </h3>
-                    <p className="text-xs text-gray-500 line-clamp-1">
-                      {note.content || 'No content'}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-gray-400">
-                        {new Date(note.updatedAt).toLocaleDateString()}
-                      </span>
-                      {note.tags[0] && (
-                        <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
-                          {note.tags[0]}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteNote(note.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded transition-all"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M4 4l8 8M12 4l-8 8" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                  </button>
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white ${index % 3 === 0 ? 'bg-indigo-500' : index % 3 === 1 ? 'bg-orange-500' : 'bg-teal-500'
+                  }`}>
+                  <span className="material-symbols-rounded text-2xl">
+                    {index % 3 === 0 ? 'description' : index % 3 === 1 ? 'edit_note' : 'auto_awesome'}
+                  </span>
                 </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title || 'Untitled'}</h3>
+                  <p className="text-slate-400 text-sm truncate">{note.content || 'No content...'}</p>
+                  <p className="text-[10px] font-bold text-slate-300 uppercase mt-1">
+                    {new Date(note.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}
+                  </p>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteNote(note.id);
+                  }}
+                  className="text-slate-300 hover:text-rose-500 transition-colors"
+                >
+                  <span className="material-symbols-rounded">more_vert</span>
+                </button>
               </div>
-            ))}
+            ))
+          )}
+        </div>
+      </main>
+
+      {/* Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl ios-tab-shadow px-6 pb-8 pt-4 z-50">
+        <div className="max-w-md mx-auto relative flex justify-between items-center">
+          <button className="flex flex-col items-center gap-1 group">
+            <span className="material-symbols-rounded text-primary">sticky_note_2</span>
+            <span className="text-[10px] font-bold text-primary tracking-wider uppercase">Notes</span>
+          </button>
+          <button className="flex flex-col items-center gap-1 group">
+            <span className="material-symbols-rounded text-slate-400 dark:text-slate-500">favorite</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Favorites</span>
+          </button>
+          <div className="w-16"></div>
+          <button className="flex flex-col items-center gap-1 group">
+            <span className="material-symbols-rounded text-slate-400 dark:text-slate-500">lock</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Password</span>
+          </button>
+          <button className="flex flex-col items-center gap-1 group">
+            <span className="material-symbols-rounded text-slate-400 dark:text-slate-500">settings</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Settings</span>
+          </button>
+          {/* Floating Action Button */}
+          <div className="absolute left-1/2 -translate-x-1/2 -top-12">
+            <button
+              onClick={handleCreateNote}
+              className="w-16 h-16 bg-primary rounded-full floating-action-button flex items-center justify-center text-slate-900 transform active:scale-90 transition-transform duration-100 border-4 border-white dark:border-slate-900"
+            >
+              <span className="material-symbols-rounded text-3xl font-bold">add</span>
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      </nav>
 
-      {/* Bottom Bar */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-3 flex items-center justify-between">
-        <button className="flex flex-col items-center gap-1 text-yellow-500">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
-          </svg>
-          <span className="text-xs font-medium">Notes</span>
-        </button>
-
-        <button
-          onClick={handleCreateNote}
-          className="w-14 h-14 -mt-8 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-105"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
-
-        <button className="flex flex-col items-center gap-1 text-gray-400">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24" />
-          </svg>
-          <span className="text-xs font-medium">Setup</span>
-        </button>
-      </div>
+      {statusMsg && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 bg-primary text-slate-900 rounded-full shadow-lg font-bold text-sm animate-fade-in">
+          {statusMsg}
+        </div>
+      )}
     </div>
   );
 }
