@@ -20,7 +20,7 @@ export default {
                 'tokyo-error': '#f7768e',      // Red
                 'primary': '#FACC15',
                 'background-light': '#F8FAFC',
-                'background-dark': '#f70c0cff',
+                'background-dark': '#0F172A',
             },
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],
