@@ -175,86 +175,100 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
             onDrop={handleDrop}
         >
             {/* Header Cluster */}
-            <header className="px-6 py-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#0B0F1A]">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={onCancel}
-                        className="w-11 h-11 rounded-full border border-slate-100 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm bg-white dark:bg-slate-900"
-                    >
-                        <span className="material-symbols-rounded text-[#1E293B] dark:text-slate-300">chevron_left</span>
-                    </button>
-                    <div className="flex flex-col">
-                        <span className="text-[19px] font-[900] text-[#1E293B] dark:text-white leading-[1.1]">Sticky</span>
-                        <span className="text-[19px] font-[900] text-[#1E293B] dark:text-white leading-[1.1]">Note</span>
+            {!isFocusMode && (
+                <header className="px-6 py-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#0B0F1A]">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={onCancel}
+                            className="w-11 h-11 rounded-full border border-slate-100 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm bg-white dark:bg-slate-900"
+                        >
+                            <span className="material-symbols-rounded text-[#1E293B] dark:text-slate-300">chevron_left</span>
+                        </button>
+                        <div className="flex flex-col">
+                            <span className="text-[19px] font-[900] text-[#1E293B] dark:text-white leading-[1.1]">Sticky</span>
+                            <span className="text-[19px] font-[900] text-[#1E293B] dark:text-white leading-[1.1]">Note</span>
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="flex bg-[#F8FAFC] dark:bg-slate-800/50 p-1 rounded-[20px] gap-0 border border-slate-100 dark:border-slate-700/50">
-                        {/* Theme Toggle Button */}
+                    <div className="flex items-center gap-3">
+                        <div className="flex bg-[#F8FAFC] dark:bg-slate-800/50 p-1 rounded-[20px] gap-0 border border-slate-100 dark:border-slate-700/50">
+                            {/* Theme Toggle Button */}
+                            <button
+                                onClick={onToggleTheme}
+                                className="w-11 h-11 flex items-center justify-center text-amber-400 hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors"
+                                title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                            >
+                                <span className="material-symbols-rounded text-[24px]">{isDark ? 'light_mode' : 'dark_mode'}</span>
+                            </button>
+                            {/* Export to TXT Button */}
+                            <button
+                                onClick={handleExport}
+                                className="w-11 h-11 flex items-center justify-center text-[#F97316] hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors"
+                                title="Export as .txt"
+                            >
+                                <span className="material-symbols-rounded text-[24px]">download</span>
+                            </button>
+                            <button
+                                onClick={() => setIsFocusMode(!isFocusMode)}
+                                className={`w-11 h-11 flex items-center justify-center rounded-full transition-colors ${isFocusMode ? 'text-[#7070FF] bg-white dark:bg-slate-700' : 'text-slate-400 hover:bg-white dark:hover:bg-slate-700'}`}
+                                title="Focus Mode"
+                            >
+                                <span className="material-symbols-rounded text-[24px]">open_in_full</span>
+                            </button>
+                        </div>
                         <button
-                            onClick={onToggleTheme}
-                            className="w-11 h-11 flex items-center justify-center text-amber-400 hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors"
-                            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                            onClick={handleSave}
+                            className="bg-[#7070FF] text-white px-9 py-3 rounded-[18px] font-black text-sm shadow-[0_8px_25px_-4px_rgba(112,112,255,0.5)] hover:brightness-110 transition-all active:scale-95 tracking-wide"
                         >
-                            <span className="material-symbols-rounded text-[24px]">{isDark ? 'light_mode' : 'dark_mode'}</span>
-                        </button>
-                        {/* Export to TXT Button */}
-                        <button
-                            onClick={handleExport}
-                            className="w-11 h-11 flex items-center justify-center text-[#F97316] hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors"
-                            title="Export as .txt"
-                        >
-                            <span className="material-symbols-rounded text-[24px]">download</span>
-                        </button>
-                        <button
-                            onClick={() => setIsFocusMode(!isFocusMode)}
-                            className={`w-11 h-11 flex items-center justify-center rounded-full transition-colors ${isFocusMode ? 'text-[#7070FF] bg-white dark:bg-slate-700' : 'text-slate-400 hover:bg-white dark:hover:bg-slate-700'}`}
-                            title="Focus Mode"
-                        >
-                            <span className="material-symbols-rounded text-[24px]">open_in_full</span>
+                            Save
                         </button>
                     </div>
-                    <button
-                        onClick={handleSave}
-                        className="bg-[#7070FF] text-white px-9 py-3 rounded-[18px] font-black text-sm shadow-[0_8px_25px_-4px_rgba(112,112,255,0.5)] hover:brightness-110 transition-all active:scale-95 tracking-wide"
-                    >
-                        Save
-                    </button>
-                </div>
-            </header>
+                </header>
+            )}
+
+            {isFocusMode && (
+                <button
+                    onClick={() => setIsFocusMode(false)}
+                    className="fixed top-6 right-6 w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center z-[10000] text-slate-500 hover:text-primary transition-colors"
+                    title="Exit Focus Mode"
+                >
+                    <span className="material-symbols-rounded">close_fullscreen</span>
+                </button>
+            )}
 
             {/* Content Body */}
             <div className={`flex-1 overflow-auto px-10 pt-10 pb-32 transition-all ${isFocusMode ? 'max-w-4xl mx-auto w-full' : ''}`}>
                 {/* Meta Bar */}
-                <div className="flex items-center justify-between mb-10">
-                    <button onClick={onCancel} className="flex items-center gap-2 group">
-                        <span className="material-symbols-rounded text-[#7070FF] text-lg font-bold">arrow_back</span>
-                        <span className="text-[#7070FF] font-[900] text-[12px] tracking-[0.14em] uppercase">Drafts</span>
-                    </button>
-                    <div className="flex items-center gap-6">
-                        {/* Heart Option for Favorites */}
-                        <button
-                            onClick={handleToggleFavorite}
-                            className={`transition-all duration-300 hover:scale-125 ${isPinned ? 'text-[#F43F5E]' : 'text-slate-300'}`}
-                            title={isPinned ? 'Remove from Favorites' : 'Add to Favorites'}
-                        >
-                            <span className={`material-symbols-rounded text-[24px] ${isPinned ? 'fill-current' : ''}`}>favorite</span>
+                {!isFocusMode && (
+                    <div className="flex items-center justify-between mb-10">
+                        <button onClick={onCancel} className="flex items-center gap-2 group">
+                            <span className="material-symbols-rounded text-[#7070FF] text-lg font-bold">arrow_back</span>
+                            <span className="text-[#7070FF] font-[900] text-[12px] tracking-[0.14em] uppercase">Drafts</span>
                         </button>
-                        <button
-                            onClick={toggleColor}
-                            className="w-7 h-7 rounded-[6px] shadow-sm ring-2 ring-transparent hover:ring-slate-200 transition-all active:scale-90"
-                            style={{ backgroundColor: noteColor }}
-                            title="Change Note Color"
-                        ></button>
-                        <button
-                            onClick={() => displayStatus('Additional options coming soon!')}
-                            className="text-slate-400 hover:text-slate-600 transition-colors"
-                        >
-                            <span className="material-symbols-rounded text-[26px]">more_horiz</span>
-                        </button>
+                        <div className="flex items-center gap-6">
+                            {/* Heart Option for Favorites */}
+                            <button
+                                onClick={handleToggleFavorite}
+                                className={`transition-all duration-300 hover:scale-125 ${isPinned ? 'text-[#F43F5E]' : 'text-slate-300'}`}
+                                title={isPinned ? 'Remove from Favorites' : 'Add to Favorites'}
+                            >
+                                <span className={`material-symbols-rounded text-[24px] ${isPinned ? 'fill-current' : ''}`}>favorite</span>
+                            </button>
+                            <button
+                                onClick={toggleColor}
+                                className="w-7 h-7 rounded-[6px] shadow-sm ring-2 ring-transparent hover:ring-slate-200 transition-all active:scale-90"
+                                style={{ backgroundColor: noteColor }}
+                                title="Change Note Color"
+                            ></button>
+                            <button
+                                onClick={() => displayStatus('Additional options coming soon!')}
+                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <span className="material-symbols-rounded text-[26px]">more_horiz</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Title Input */}
                 <input
@@ -271,8 +285,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
                         <div
                             key={idx}
                             className={`px-5 py-2.5 rounded-full flex items-center gap-2 text-[14px] font-bold shadow-sm ${idx % 2 === 0
-                                    ? 'bg-[#DCFCE7] text-[#166534] dark:bg-[#064E3B] dark:text-[#34D399]'
-                                    : 'bg-[#FEF9C3] text-[#854D0E] dark:bg-[#78350F] dark:text-[#FBBF24]'
+                                ? 'bg-[#DCFCE7] text-[#166534] dark:bg-[#064E3B] dark:text-[#34D399]'
+                                : 'bg-[#FEF9C3] text-[#854D0E] dark:bg-[#78350F] dark:text-[#FBBF24]'
                                 }`}
                         >
                             #{tag.toLowerCase()}
@@ -329,8 +343,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
             <button
                 onClick={toggleVoice}
                 className={`fixed bottom-12 right-12 w-[88px] h-[88px] rounded-full flex items-center justify-center shadow-[0_20px_50px_-8px_rgba(112,112,255,0.45)] transition-all hover:scale-105 active:scale-95 group z-50 ${isListening
-                        ? 'bg-[#F43F5E] animate-pulse text-white'
-                        : 'bg-[#7070FF] text-white'
+                    ? 'bg-[#F43F5E] animate-pulse text-white'
+                    : 'bg-[#7070FF] text-white'
                     }`}
                 title={isListening ? 'Stop Listening' : 'Start Dictation'}
             >
@@ -341,24 +355,26 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
             </button>
 
             {/* Context Footer */}
-            <footer className="px-10 py-7 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between text-[#94A3B8] dark:text-slate-500 bg-white/50 dark:bg-[#0B0F1A]/50 backdrop-blur-md">
-                <div className="flex items-center gap-3">
-                    <span className="material-symbols-rounded text-[20px]">link</span>
-                    <span className="text-[14px] font-bold">Linked to:</span>
-                    <a
-                        href={initialNote?.url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#7070FF] font-black text-[14px] hover:underline"
-                    >
-                        {initialNote?.domain || 'localhost'}
-                    </a>
-                </div>
-                {/* Decorative Triangle Accent */}
-                <div className="relative w-6 h-6 overflow-hidden">
-                    <div className="absolute top-0 right-0 w-[141%] h-[141%] bg-[#7070FF]/10 rotate-45 translate-x-[50%] translate-y-[50%] transition-colors group-hover:bg-[#7070FF]/20"></div>
-                </div>
-            </footer>
+            {!isFocusMode && (
+                <footer className="px-10 py-7 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between text-[#94A3B8] dark:text-slate-500 bg-white/50 dark:bg-[#0B0F1A]/50 backdrop-blur-md">
+                    <div className="flex items-center gap-3">
+                        <span className="material-symbols-rounded text-[20px]">link</span>
+                        <span className="text-[14px] font-bold">Linked to:</span>
+                        <a
+                            href={initialNote?.url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#7070FF] font-black text-[14px] hover:underline"
+                        >
+                            {initialNote?.domain || 'localhost'}
+                        </a>
+                    </div>
+                    {/* Decorative Triangle Accent */}
+                    <div className="relative w-6 h-6 overflow-hidden">
+                        <div className="absolute top-0 right-0 w-[141%] h-[141%] bg-[#7070FF]/10 rotate-45 translate-x-[50%] translate-y-[50%] transition-colors group-hover:bg-[#7070FF]/20"></div>
+                    </div>
+                </footer>
+            )}
 
             {/* Status Toast */}
             {showStatus && (
