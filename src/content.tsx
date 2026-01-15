@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import FloatingPanel from './components/FloatingPanel';
 import { storage } from './utils/storage';
+import indexStyles from './index.css?inline';
 
 const id = 'kuviyam-root';
 let panelMounted = false;
@@ -26,10 +27,8 @@ async function mountPanel() {
 
     // Inject styles
     try {
-        const response = await fetch(chrome.runtime.getURL('src/index.css'));
-        const css = await response.text();
         const style = document.createElement('style');
-        style.textContent = css;
+        style.textContent = indexStyles;
         shadow.appendChild(style);
 
         // Also inject fonts
