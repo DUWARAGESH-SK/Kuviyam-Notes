@@ -144,7 +144,7 @@ function App() {
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
           <button
             onClick={() => setView('list')}
-            className="w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors"
+            className="w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors px-0 cursor-pointer"
           >
             <span className="material-symbols-rounded">arrow_back</span>
           </button>
@@ -181,15 +181,15 @@ function App() {
           <div className="flex gap-2">
             <button
               onClick={handleOpenPanel}
-              className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform"
+              className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform px-0 cursor-pointer"
               title="Open Persistent Panel"
             >
               <span className="material-symbols-rounded text-[22px]">filter_list</span>
             </button>
-            <button className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform">
+            <button className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform px-0 cursor-pointer">
               <span className="material-symbols-rounded text-[22px]">lightbulb</span>
             </button>
-            <button className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform">
+            <button className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform px-0 cursor-pointer">
               <span className="material-symbols-rounded text-[22px]">menu</span>
             </button>
           </div>
@@ -256,7 +256,7 @@ function App() {
                     e.stopPropagation();
                     handleDeleteNote(note.id);
                   }}
-                  className="text-slate-300 hover:text-rose-500 transition-colors"
+                  className="text-slate-300 hover:text-rose-500 transition-colors px-0 cursor-pointer"
                 >
                   <span className="material-symbols-rounded">more_vert</span>
                 </button>
@@ -269,20 +269,20 @@ function App() {
       {/* Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl ios-tab-shadow px-6 pb-8 pt-4 z-50">
         <div className="max-w-md mx-auto relative flex justify-between items-center">
-          <button className="flex flex-col items-center gap-1 group">
+          <button className="flex flex-col items-center gap-1 group px-0 cursor-pointer">
             <span className="material-symbols-rounded text-primary">sticky_note_2</span>
             <span className="text-[10px] font-bold text-primary tracking-wider uppercase">Notes</span>
           </button>
-          <button className="flex flex-col items-center gap-1 group">
+          <button className="flex flex-col items-center gap-1 group px-0 cursor-pointer">
             <span className="material-symbols-rounded text-slate-400 dark:text-slate-500">favorite</span>
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Favorites</span>
           </button>
           <div className="w-16"></div>
-          <button className="flex flex-col items-center gap-1 group">
+          <button className="flex flex-col items-center gap-1 group px-0 cursor-pointer">
             <span className="material-symbols-rounded text-slate-400 dark:text-slate-500">lock</span>
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Password</span>
           </button>
-          <button className="flex flex-col items-center gap-1 group">
+          <button className="flex flex-col items-center gap-1 group px-0 cursor-pointer">
             <span className="material-symbols-rounded text-slate-400 dark:text-slate-500">settings</span>
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Settings</span>
           </button>
@@ -290,7 +290,7 @@ function App() {
           <div className="absolute left-1/2 -translate-x-1/2 -top-12">
             <button
               onClick={handleCreateNote}
-              className="w-16 h-16 bg-primary rounded-full floating-action-button flex items-center justify-center text-slate-900 transform active:scale-90 transition-transform duration-100 border-4 border-white dark:border-slate-900"
+              className="w-16 h-16 bg-primary rounded-full floating-action-button flex items-center justify-center text-slate-900 transform active:scale-90 transition-transform duration-100 border-4 border-white dark:border-slate-900 px-0 cursor-pointer"
             >
               <span className="material-symbols-rounded text-3xl font-bold">add</span>
             </button>
