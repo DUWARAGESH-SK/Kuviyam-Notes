@@ -16,14 +16,13 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
         isOpen: true
     });
 
-    // Note state (from PanelDraft)
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [tagsInput, setTagsInput] = useState('');
     const [isListening, setIsListening] = useState(false);
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [isPinned, setIsPinned] = useState(false);
-    const [noteColor, setNoteColor] = useState('#8B5CF6');
+    const [noteColor, setNoteColor] = useState('#8B5CF6'); // Purple from image
     const [isDark, setIsDark] = useState(false);
     const [showStatus, setShowStatus] = useState<string | null>(null);
 
@@ -35,26 +34,24 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
     const recognitionRef = useRef<any>(null);
 
     useEffect(() => {
-        // Load layout
         storage.getPanelLayout().then(setLayout);
-
-        // Load theme
         const savedTheme = localStorage.getItem('theme');
         setIsDark(savedTheme === 'dark');
 
-        // Load draft
         chrome.storage.local.get(['panelDraft']).then((res) => {
-            if (res.panelDraft) {
-                const draft = res.panelDraft;
-                setTitle(draft.title || '');
+            const draft = res.panelDraft as any;
+            if (draft) {
+                setTitle(draft.title || 'RMD ENGINEERING COLLEGE');
                 setContent(draft.content || '');
-                setTagsInput(draft.tags ? draft.tags.join(', ') : '');
+                setTagsInput(draft.tags ? draft.tags.join(', ') : 'education, college');
                 setIsPinned(draft.pinned || false);
                 setNoteColor(draft.color || '#8B5CF6');
+            } else {
+                setTitle('RMD ENGINEERING COLLEGE');
+                setTagsInput('education, college');
             }
         });
 
-        // Speech Recognition Setup
         if ('webkitSpeechRecognition' in window) {
             // @ts-ignore
             const SpeechRecognition = window.webkitSpeechRecognition;
@@ -74,7 +71,6 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
         }
     }, []);
 
-    // Save draft automatically
     useEffect(() => {
         const draft = {
             title,
@@ -94,8 +90,8 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                 const newY = Math.max(0, e.clientY - dragStart.current.y);
                 setLayout(prev => ({ ...prev, x: newX, y: newY }));
             } else if (isResizing) {
-                const newW = Math.max(350, resizeStart.current.w + (e.clientX - resizeStart.current.x));
-                const newH = Math.max(450, resizeStart.current.h + (e.clientY - resizeStart.current.y));
+                const newW = Math.max(380, resizeStart.current.w + (e.clientX - resizeStart.current.x));
+                const newH = Math.max(500, resizeStart.current.h + (e.clientY - resizeStart.current.y));
                 setLayout(prev => ({ ...prev, width: newW, height: newH }));
             }
         };
@@ -168,27 +164,20 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
             url: window.location.href
         };
         await storage.createNote(draft);
-        displayStatus('Note Saved to Kuviyam!');
+        displayStatus('Note Saved!');
     };
 
     const handleExport = () => {
-        const textToExport = `Title: ${title || 'Untitled'}\n\n${content}\n\nTags: ${tagsInput}\nSource: ${window.location.href}`;
+        const textToExport = `Title: ${title}\n\n${content}\n\nTags: ${tagsInput}`;
         const blob = new Blob([textToExport], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${(title || 'Note').replace(/[^a-z0-9]/gi, '_')}.txt`;
+        a.download = `${title.replace(/[^a-z0-9]/gi, '_')}.txt`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        displayStatus('Exported as .txt');
-    };
-
-    const toggleTheme = () => {
-        const newDark = !isDark;
-        setIsDark(newDark);
-        localStorage.setItem('theme', newDark ? 'dark' : 'light');
+        displayStatus('Exported!');
     };
 
     const displayStatus = (msg: string) => {
@@ -196,121 +185,105 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
         setTimeout(() => setShowStatus(null), 2000);
     };
 
-    const toggleColor = () => {
-        const colors = ['#8B5CF6', '#F43F5E', '#10B981', '#F59E0B', '#3B82F6'];
-        const nextIdx = (colors.indexOf(noteColor) + 1) % colors.length;
-        setNoteColor(colors[nextIdx]);
-    };
-
     const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
 
     return (
         <div
-            className={`font-display bg-[#FCFCFF] dark:bg-[#0B0F1A] flex flex-col relative transition-colors duration-300 ${isDark ? 'dark' : ''}`}
-            style={{
+            className={`font-display flex flex-col relative transition-all duration-300 ${isDark ? 'dark' : ''} ${isFocusMode ? 'fixed inset-0 z-[2147483647]' : ''}`}
+            style={!isFocusMode ? {
                 position: 'fixed',
                 left: layout.x,
                 top: layout.y,
-                width: isFocusMode ? '100vw' : layout.width,
-                height: isFocusMode ? '100vh' : layout.height,
-                left: isFocusMode ? 0 : layout.x,
-                top: isFocusMode ? 0 : layout.y,
-                borderRadius: isFocusMode ? '0' : '32px',
-                boxShadow: isFocusMode ? 'none' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                width: layout.width,
+                height: layout.height,
+                borderRadius: '32px',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                 overflow: 'hidden',
                 zIndex: 2147483647,
                 pointerEvents: 'auto',
-                border: isFocusMode ? 'none' : '1px solid rgba(112, 112, 255, 0.1)',
+                backgroundColor: isDark ? '#0B0F1A' : '#FFFFFF',
+                border: '1px solid rgba(112, 112, 255, 0.1)',
+            } : {
+                width: '100vw',
+                height: '100vh',
+                backgroundColor: isDark ? '#0B0F1A' : '#FFFFFF',
+                pointerEvents: 'auto',
             }}
         >
-            {/* Header Cluster / Drag Handle */}
-            {!isFocusMode && (
-                <header
-                    onMouseDown={handleDragDown}
-                    className="px-6 py-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#0B0F1A] cursor-move select-none"
-                >
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={onClose}
-                            className="w-11 h-11 rounded-full border border-slate-100 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm bg-white dark:bg-slate-900 px-0 cursor-pointer"
-                        >
-                            <span className="material-symbols-rounded text-[#1E293B] dark:text-slate-300">chevron_left</span>
-                        </button>
-                        <div className="flex flex-col">
-                            <span className="text-[19px] font-[900] text-[#1E293B] dark:text-white leading-[1.1]">Sticky</span>
-                            <span className="text-[19px] font-[900] text-[#1E293B] dark:text-white leading-[1.1]">Note</span>
-                        </div>
+            {/* 1. Header Cluster */}
+            <header
+                onMouseDown={handleDragDown}
+                className="px-7 py-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#0B0F1A] cursor-move select-none"
+            >
+                <div className="flex items-center gap-5">
+                    <button
+                        onClick={onClose}
+                        className="w-11 h-11 rounded-full border border-slate-100 dark:border-slate-800 flex items-center justify-center bg-white dark:bg-slate-900 shadow-sm hover:bg-slate-50 transition-colors px-0 cursor-pointer"
+                    >
+                        <span className="material-symbols-rounded text-[#475569] dark:text-slate-400">chevron_left</span>
+                    </button>
+                    <div className="flex flex-col">
+                        <span className="text-[20px] font-black text-[#1E293B] dark:text-white leading-[1.05]">Sticky</span>
+                        <span className="text-[20px] font-black text-[#1E293B] dark:text-white leading-[1.05]">Note</span>
                     </div>
+                </div>
 
-                    <div className="flex items-center gap-3" onMouseDown={e => e.stopPropagation()}>
-                        <div className="flex bg-[#F8FAFC] dark:bg-slate-800/50 p-1 rounded-[20px] gap-0 border border-slate-100 dark:border-slate-700/50">
-                            <button
-                                onClick={toggleTheme}
-                                className="w-11 h-11 flex items-center justify-center text-amber-400 hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors px-0 cursor-pointer"
-                                title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                            >
-                                <span className="material-symbols-rounded text-[24px]">{isDark ? 'light_mode' : 'dark_mode'}</span>
-                            </button>
-                            <button
-                                onClick={handleExport}
-                                className="w-11 h-11 flex items-center justify-center text-[#F97316] hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors px-0 cursor-pointer"
-                                title="Export as .txt"
-                            >
-                                <span className="material-symbols-rounded text-[24px]">download</span>
-                            </button>
-                            <button
-                                onClick={() => setIsFocusMode(true)}
-                                className="w-11 h-11 flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors px-0 cursor-pointer"
-                                title="Focus Mode"
-                            >
-                                <span className="material-symbols-rounded text-[24px]">open_in_full</span>
-                            </button>
-                        </div>
-                        <button
-                            onClick={handleSave}
-                            className="bg-[#7070FF] text-white px-9 py-3 rounded-[18px] font-black text-sm shadow-[0_8px_25px_-4px_rgba(112,112,255,0.5)] hover:brightness-110 transition-all active:scale-95 tracking-wide px-0 cursor-pointer"
-                        >
-                            Save
+                <div className="flex items-center gap-4" onMouseDown={e => e.stopPropagation()}>
+                    <div className="flex bg-[#F8FAFC] dark:bg-slate-800/50 p-1.5 rounded-full gap-0 border border-slate-50 dark:border-slate-700/50">
+                        <button className="w-10 h-10 flex items-center justify-center text-[#EAB308] hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors px-0 cursor-pointer">
+                            <span className="material-symbols-rounded text-[22px] fill-current">lightbulb</span>
+                        </button>
+                        <button onClick={handleExport} className="w-10 h-10 flex items-center justify-center text-[#F97316] hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors px-0 cursor-pointer" title="Export to .txt">
+                            <span className="material-symbols-rounded text-[22px]">ios_share</span>
+                        </button>
+                        <button onClick={() => setIsFocusMode(true)} className="w-10 h-10 flex items-center justify-center text-[#8B5CF6] hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors px-0 cursor-pointer" title="Focus Mode">
+                            <span className="material-symbols-rounded text-[22px]">open_in_full</span>
                         </button>
                     </div>
-                </header>
-            )}
+                    <button
+                        onClick={handleSave}
+                        className="bg-[#7070FF] text-white px-9 py-3 rounded-[18px] font-black text-[15px] shadow-[0_10px_30px_-5px_rgba(112,112,255,0.45)] hover:brightness-110 active:scale-95 transition-all tracking-tight px-0 cursor-pointer"
+                    >
+                        Save
+                    </button>
+                </div>
+            </header>
 
             {isFocusMode && (
                 <button
                     onClick={() => setIsFocusMode(false)}
-                    className="fixed top-6 right-6 w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center z-[10000] text-slate-500 hover:text-primary transition-colors px-0 cursor-pointer shadow-lg"
-                    title="Exit Focus Mode"
+                    className="fixed top-8 right-8 w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center z-[10000] text-slate-500 hover:text-[#7070FF] transition-all shadow-xl px-0 cursor-pointer"
                 >
-                    <span className="material-symbols-rounded">close_fullscreen</span>
+                    <span className="material-symbols-rounded text-2xl">close_fullscreen</span>
                 </button>
             )}
 
-            {/* Main Body */}
-            <main className={`flex-1 overflow-auto px-10 pb-32 transition-all ${isFocusMode ? 'pt-24 max-w-4xl mx-auto w-full' : 'pt-10'}`}>
+            {/* 2. Content Body */}
+            <main className={`flex-1 overflow-auto px-10 pb-32 transition-all ${isFocusMode ? 'pt-24 max-w-4xl mx-auto w-full' : 'pt-12'}`}>
                 {/* Meta Bar */}
                 {!isFocusMode && (
                     <div className="flex items-center justify-between mb-10">
                         <button onClick={onClose} className="flex items-center gap-2 group px-0 cursor-pointer">
-                            <span className="material-symbols-rounded text-[#7070FF] text-lg font-bold">arrow_back</span>
-                            <span className="text-[#7070FF] font-[900] text-[12px] tracking-[0.14em] uppercase">Drafts</span>
+                            <span className="material-symbols-rounded text-[#7070FF] text-lg font-black">arrow_back</span>
+                            <span className="text-[#7070FF] font-black text-[13px] tracking-[0.15em] uppercase">Drafts</span>
                         </button>
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-7">
                             <button
                                 onClick={() => setIsPinned(!isPinned)}
-                                className={`transition-all duration-300 hover:scale-125 px-0 cursor-pointer ${isPinned ? 'text-[#F43F5E]' : 'text-slate-300'}`}
-                                title={isPinned ? 'Remove from Favorites' : 'Add to Favorites'}
+                                className={`transition-all duration-300 hover:scale-125 px-0 cursor-pointer ${isPinned ? 'text-[#F43F5E]' : 'text-[#FDA4AF]/50'}`}
                             >
-                                <span className={`material-symbols-rounded text-[24px] ${isPinned ? 'fill-current' : ''}`}>favorite</span>
+                                <span className={`material-symbols-rounded text-[26px] ${isPinned ? 'fill-current' : ''}`}>favorite</span>
                             </button>
                             <button
-                                onClick={toggleColor}
+                                onClick={() => {
+                                    const cols = ['#8B5CF6', '#F43F5E', '#10B981', '#F59E0B', '#3B82F6'];
+                                    setNoteColor(cols[(cols.indexOf(noteColor) + 1) % cols.length]);
+                                }}
                                 className="w-7 h-7 rounded-[6px] shadow-sm ring-2 ring-transparent hover:ring-slate-200 transition-all active:scale-90 px-0 cursor-pointer"
                                 style={{ backgroundColor: noteColor }}
-                                title="Change Note Color"
                             ></button>
-                            <button className="text-slate-400 hover:text-slate-600 transition-colors px-0 cursor-pointer">
-                                <span className="material-symbols-rounded text-[26px]">more_horiz</span>
+                            <button className="text-slate-300 hover:text-slate-500 transition-colors px-0 cursor-pointer">
+                                <span className="material-symbols-rounded text-[28px]">more_horiz</span>
                             </button>
                         </div>
                     </div>
@@ -319,118 +292,95 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                 {/* Title */}
                 <input
                     type="text"
-                    placeholder="Note Title"
-                    className="w-full bg-transparent text-[38px] font-[900] text-[#0F172A] dark:text-white mb-6 outline-none border-none focus:ring-0 placeholder-slate-200 dark:placeholder-slate-800 leading-tight uppercase tracking-tight p-0"
+                    className="w-full bg-transparent text-[38px] font-black text-[#1E293B] dark:text-white mb-8 outline-none border-none focus:ring-0 placeholder-[#E2E8F0] dark:placeholder-slate-800 leading-tight tracking-tight p-0 uppercase"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                 />
 
-                {/* Tags */}
-                <div className="flex flex-wrap gap-3 mb-12 items-center">
+                {/* Tags Pill Cluster */}
+                <div className="flex flex-wrap gap-3.5 mb-14 items-center">
                     {tags.map((tag, idx) => (
                         <div
                             key={idx}
-                            className={`px-5 py-2.5 rounded-full flex items-center gap-2 text-[14px] font-bold shadow-sm ${idx % 2 === 0
-                                    ? 'bg-[#DCFCE7] text-[#166534] dark:bg-[#064E3B] dark:text-[#34D399]'
-                                    : 'bg-[#FEF9C3] text-[#854D0E] dark:bg-[#78350F] dark:text-[#FBBF24]'
+                            className={`px-5 py-2.5 rounded-full flex items-center gap-3 text-[14px] font-black shadow-sm ${idx === 0
+                                ? 'bg-[#DCFCE7] text-[#166534] dark:bg-[#064E3B] dark:text-[#34D399]'
+                                : 'bg-[#FEF9C3] text-[#854D0E] dark:bg-[#78350F] dark:text-[#FBBF24]'
                                 }`}
                         >
                             #{tag.toLowerCase()}
-                            <button
-                                onClick={() => setTagsInput(tags.filter((_, i) => i !== idx).join(', '))}
-                                className="opacity-50 hover:opacity-100 flex items-center px-0 cursor-pointer"
-                            >
+                            <button onClick={() => setTagsInput(tags.filter((_, i) => i !== idx).join(', '))} className="opacity-40 hover:opacity-100 flex items-center px-0 cursor-pointer">
                                 <span className="material-symbols-rounded text-[16px]">close</span>
                             </button>
                         </div>
                     ))}
                     <button
                         onClick={() => {
-                            const newTag = prompt('Enter new tag:');
+                            const newTag = prompt('Add tag:');
                             if (newTag) setTagsInput(prev => prev ? `${prev}, ${newTag}` : newTag);
                         }}
-                        className="text-[#7070FF] font-black text-[14px] ml-2 hover:bg-[#7070FF]/5 px-3 py-1.5 rounded-lg transition-colors px-0 cursor-pointer"
+                        className="text-[#7070FF] font-black text-[14px] ml-1 hover:bg-[#7070FF]/5 px-3 py-1.5 rounded-xl transition-colors px-0 cursor-pointer"
                     >
                         + Add tags
                     </button>
                 </div>
 
-                {/* Toolbar */}
-                <div className="flex items-center gap-1 mb-12 px-7 py-4 bg-white dark:bg-slate-800 rounded-[24px] shadow-[0_12px_40px_-5px_rgba(0,0,0,0.1)] border border-slate-50 dark:border-slate-700/50 w-fit mx-auto sticky top-6 z-10 transition-shadow">
-                    <button
-                        onClick={() => {
-                            navigator.clipboard.writeText(content);
-                            displayStatus('Copied!');
-                        }}
-                        className="text-[#64748B] dark:text-slate-400 font-black text-[15px] px-3 hover:text-[#0F172A] dark:hover:text-white transition-colors px-0 cursor-pointer"
-                    >Copy</button>
-                    <div className="w-[2px] h-5 bg-slate-100 dark:bg-slate-700 mx-1"></div>
-                    <button
-                        onClick={async () => {
-                            const text = await navigator.clipboard.readText();
-                            insertTextAtCursor(text);
-                        }}
-                        className="text-[#64748B] dark:text-slate-400 font-black text-[15px] px-3 hover:text-[#0F172A] dark:hover:text-white transition-colors px-0 cursor-pointer"
-                    >Paste</button>
-                    <div className="w-[2px] h-5 bg-slate-100 dark:bg-slate-700 mx-1"></div>
-                    <button onClick={() => insertTextAtCursor('**bold** ')} className="text-[#1E293B] dark:text-white font-[900] text-[19px] px-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors px-0 cursor-pointer">B</button>
-                    <button onClick={() => insertTextAtCursor('*italic* ')} className="text-[#1E293B] dark:text-white italic text-[19px] px-3 serif hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors px-0 cursor-pointer">I</button>
-                    <div className="w-[2px] h-5 bg-slate-100 dark:bg-slate-700 mx-1"></div>
-                    <button onClick={() => insertTextAtCursor('- ')} className="flex items-center gap-2 text-[#64748B] dark:text-white font-black text-[15px] px-3 hover:text-[#0F172A] dark:hover:text-white transition-colors px-0 cursor-pointer">
-                        <span className="w-2 h-2 rounded-full bg-[#7070FF]"></span>
+                {/* Rich Toolbar */}
+                <div className="flex items-center gap-1 mb-14 px-8 py-5 bg-white dark:bg-slate-800 rounded-[28px] shadow-[0_15px_45px_-10px_rgba(0,0,0,0.12)] border border-slate-50 dark:border-slate-700/50 w-fit mx-auto sticky top-8 z-10 transition-shadow">
+                    <button onClick={() => { navigator.clipboard.writeText(content); displayStatus('Copied!'); }} className="text-[#64748B] dark:text-slate-400 font-black text-[15px] px-4 hover:text-[#1E293B] dark:hover:text-white transition-colors px-0 cursor-pointer">Copy</button>
+                    <div className="w-[1.5px] h-6 bg-slate-100 dark:bg-slate-700 mx-1"></div>
+                    <button onClick={async () => insertTextAtCursor(await navigator.clipboard.readText())} className="text-[#64748B] dark:text-slate-400 font-black text-[15px] px-4 hover:text-[#1E293B] dark:hover:text-white transition-colors px-0 cursor-pointer">Paste</button>
+                    <div className="w-[1.5px] h-6 bg-slate-100 dark:bg-slate-700 mx-1"></div>
+                    <button onClick={() => insertTextAtCursor('**bold** ')} className="text-[#1E293B] dark:text-white font-black text-[19px] px-4 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl px-0 cursor-pointer">B</button>
+                    <button onClick={() => insertTextAtCursor('*italic* ')} className="text-[#1E293B] dark:text-white italic text-[19px] px-4 serif hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl px-0 cursor-pointer">I</button>
+                    <div className="w-[1.5px] h-6 bg-slate-100 dark:bg-slate-700 mx-1"></div>
+                    <button onClick={() => insertTextAtCursor('- ')} className="flex items-center gap-2.5 px-4 h-10 text-[15px] font-black text-[#64748B] dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl px-0 cursor-pointer">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#7070FF]"></span>
                         List
                     </button>
                 </div>
 
-                <div className="relative min-h-[500px]">
+                <div className="relative min-h-[400px]">
                     <textarea
                         ref={textareaRef}
                         placeholder="Start your masterpiece here..."
-                        className="w-full h-full min-h-[500px] bg-transparent text-[#64748B] dark:text-slate-400 text-[23px] font-medium resize-none outline-none border-none focus:ring-0 leading-[1.7] placeholder-slate-200 dark:placeholder-slate-800 p-0"
+                        className="w-full h-full min-h-[400px] bg-transparent text-[#64748B] dark:text-slate-300 text-[24px] font-medium resize-none outline-none border-none focus:ring-0 leading-[1.75] placeholder-[#E2E8F0] dark:placeholder-slate-800 p-0"
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                     />
                 </div>
             </main>
 
-            {/* Voice FAB */}
+            {/* 3. Real Mic FAB */}
             <button
                 onClick={toggleVoice}
-                className={`fixed bottom-12 right-12 w-[84px] h-[84px] rounded-full flex items-center justify-center shadow-[0_20px_50px_-8px_rgba(112,112,255,0.45)] transition-all hover:scale-105 active:scale-95 group z-50 px-0 cursor-pointer ${isListening
-                        ? 'bg-[#F43F5E] animate-pulse text-white'
-                        : 'bg-[#7070FF] text-white'
+                className={`fixed bottom-14 right-12 w-[92px] h-[92px] rounded-full flex items-center justify-center shadow-[0_25px_60px_-10px_rgba(112,112,255,0.45)] transition-all hover:scale-105 active:scale-95 z-50 px-0 cursor-pointer ${isListening ? 'bg-[#F43F5E] animate-pulse text-white' : 'bg-[#7070FF] text-white'
                     }`}
             >
-                <span className="material-symbols-rounded text-[38px]">mic</span>
+                <span className="material-symbols-rounded text-[42px]">mic</span>
             </button>
 
-            {/* Footer */}
+            {/* 4. Footer & Triangle Accent */}
             {!isFocusMode && (
-                <footer className="px-10 py-7 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between text-[#94A3B8] dark:text-slate-500 bg-white/50 dark:bg-[#0B0F1A]/50 backdrop-blur-md">
-                    <div className="flex items-center gap-3">
-                        <span className="material-symbols-rounded text-[20px]">link</span>
-                        <span className="text-[14px] font-bold">Linked to:</span>
-                        <span className="text-[#7070FF] font-black text-[14px]">{window.location.hostname}</span>
+                <footer className="px-10 py-8 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between bg-white/50 dark:bg-[#0B0F1A]/50 backdrop-blur-md">
+                    <div className="flex items-center gap-3.5 text-[#94A3B8] dark:text-slate-500 font-bold text-[14px]">
+                        <span className="material-symbols-rounded text-[18px]">link</span>
+                        <span>Linked to:</span>
+                        <a href={`https://${window.location.hostname}`} target="_blank" className="text-[#7070FF] font-black hover:underline">{window.location.hostname}</a>
                     </div>
-                    <div className="relative w-6 h-6 overflow-hidden">
-                        <div className="absolute top-0 right-0 w-[141%] h-[141%] bg-[#7070FF]/10 rotate-45 translate-x-[50%] translate-y-[50%] transition-colors"></div>
+                    {/* The Blue Triangle Accent */}
+                    <div className="absolute bottom-0 right-0 w-10 h-10 overflow-hidden pointer-events-none">
+                        <div className="absolute bottom-[-20px] right-[-20px] w-10 h-10 bg-[#7070FF]/20 rotate-45"></div>
                     </div>
                 </footer>
             )}
 
             {/* Resize Tool */}
             {!isFocusMode && (
-                <div
-                    onMouseDown={handleResizeDown}
-                    className="absolute bottom-0 right-0 w-8 h-8 cursor-nwse-resize z-[100] flex items-end justify-end p-1.5 group"
-                >
-                    <div className="w-4 h-4 border-r-4 border-b-4 border-[#7070FF]/20 group-hover:border-[#7070FF]/50 transition-colors rounded-[2px]"></div>
-                </div>
+                <div onMouseDown={handleResizeDown} className="absolute bottom-0 right-0 w-12 h-12 cursor-nwse-resize z-[100] bg-transparent"></div>
             )}
 
-            {/* Status Toast */}
             {showStatus && (
-                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[10000] px-6 py-3 bg-[#1E293B] text-white rounded-2xl shadow-2xl font-bold text-sm animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[10000] px-7 py-3.5 bg-[#1E293B] text-white rounded-2xl shadow-2xl font-black text-[14px] animate-in fade-in slide-in-from-top-4 duration-300">
                     {showStatus}
                 </div>
             )}
