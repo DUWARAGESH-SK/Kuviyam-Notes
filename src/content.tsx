@@ -18,10 +18,13 @@ async function mountPanel() {
     }
 
     const shadow = root.attachShadow({ mode: 'open' });
+
+    // Style container
     const shadowRoot = document.createElement('div');
+    shadowRoot.id = 'kuviyam-panel-container';
     shadowRoot.style.position = 'fixed';
     shadowRoot.style.zIndex = '2147483647';
-    shadowRoot.style.pointerEvents = 'none'; // Host should not block
+    shadowRoot.style.pointerEvents = 'none'; // Shadow root doesn't block
     shadowRoot.style.inset = '0';
     shadow.appendChild(shadowRoot);
 
@@ -31,7 +34,7 @@ async function mountPanel() {
         style.textContent = indexStyles;
         shadow.appendChild(style);
 
-        // Also inject fonts
+        // Inject Fonts & Icons
         const fontLink = document.createElement('link');
         fontLink.rel = 'stylesheet';
         fontLink.href = 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap';
@@ -69,11 +72,10 @@ storage.getPanelLayout().then(layout => {
 chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'KUV_OPEN_PANEL') {
         mountPanel();
-        // If already mounted but hidden, show it
         const root = document.getElementById(id);
         if (root && root.shadowRoot) {
-            const container = root.shadowRoot.querySelector('div');
-            if (container) container.style.display = 'block';
+            const container = root.shadowRoot.querySelector('#kuviyam-panel-container');
+            if (container instanceof HTMLElement) container.style.display = 'block';
         }
     }
 });
