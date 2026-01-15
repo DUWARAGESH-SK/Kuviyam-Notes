@@ -58,8 +58,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
             setContent(newContent);
             // Defer cursor update
             setTimeout(() => {
-                textareaRef.current!.selectionStart = textareaRef.current!.selectionEnd = start + text.length;
-                textareaRef.current!.focus();
+                if (textareaRef.current) {
+                    textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + text.length;
+                    textareaRef.current.focus();
+                }
             }, 0);
         } else {
             setContent(prev => prev + text);
@@ -88,23 +90,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
         }, initialNote?.id);
     };
 
-    const handleExport = () => {
-        const text = `Title: ${title}\nTags: ${tagsInput}\nURL: ${initialNote?.url || ''}\n\n${content}`;
-        const blob = new Blob([text], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${title || 'note'}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
-    // Toolbar Actions
     const handleCopy = () => {
         navigator.clipboard.writeText(content);
-        // Optional toast could go here
     };
 
     const handlePaste = async () => {
@@ -127,99 +114,167 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
         }
     };
 
+    const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+
     return (
         <div
-            className={`flex flex-col h-full transition-all duration-300 ${isFocusMode ? 'absolute inset-0 z-50 bg-tokyo-bg p-6' : ''}`}
+            className={`flex flex-col h-full bg-[#FCFCFF] dark:bg-slate-900 transition-all duration-300 relative ${isFocusMode ? 'p-0' : ''}`}
             onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
         >
-            {/* Header / Toolbar */}
-            <div className={`flex justify-between items-center mb-4 ${isFocusMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
-                <div className="flex gap-2 items-center">
-                    <button onClick={onCancel} className="text-sm text-tokyo-fg-dim hover:text-white transition-colors">
-                        ← Back
+            {/* Main Header */}
+            <header className="px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={onCancel}
+                        className="w-10 h-10 rounded-full border border-slate-100 dark:border-slate-800 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                        <span className="material-symbols-rounded text-slate-600 dark:text-slate-400">chevron_left</span>
                     </button>
-                    {isFocusMode && <span className="text-tokyo-accent font-bold text-sm ml-4">Focus Mode</span>}
+                    <div>
+                        <h1 className="text-xl font-extrabold text-[#1E293B] dark:text-white leading-tight">Sticky</h1>
+                        <h1 className="text-xl font-extrabold text-[#1E293B] dark:text-white leading-tight">Note</h1>
+                    </div>
                 </div>
 
-                <div className="flex gap-2 items-center">
-                    <button
-                        onClick={() => setIsFocusMode(!isFocusMode)}
-                        className={`p-1.5 rounded transition-colors ${isFocusMode ? 'text-tokyo-accent bg-tokyo-accent/10' : 'text-tokyo-fg-dim hover:text-white'}`}
-                        title="Toggle Focus Mode"
-                    >
-                        {isFocusMode ? '↙' : '↗'}
-                    </button>
-
-                    <button onClick={handleExport} className="p-1.5 text-tokyo-fg-dim hover:text-tokyo-accent transition-colors" title="Export">
-                        ↓
-                    </button>
-
+                <div className="flex items-center gap-2">
+                    <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl gap-1">
+                        <button className="w-10 h-10 flex items-center justify-center text-amber-400">
+                            <span className="material-symbols-rounded">lightbulb</span>
+                        </button>
+                        <button className="w-10 h-10 flex items-center justify-center text-orange-500">
+                            <span className="material-symbols-rounded">ios_share</span>
+                        </button>
+                        <button
+                            onClick={() => setIsFocusMode(!isFocusMode)}
+                            className={`w-10 h-10 flex items-center justify-center ${isFocusMode ? 'text-primary' : 'text-slate-400'}`}
+                        >
+                            <span className="material-symbols-rounded">open_in_full</span>
+                        </button>
+                    </div>
                     <button
                         onClick={handleSave}
-                        className="bg-tokyo-accent text-tokyo-bg px-4 py-1.5 rounded-md font-bold text-sm hover:bg-tokyo-accent-hover transition-all shadow-lg shadow-tokyo-accent/20"
+                        className="bg-primary text-white px-8 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-primary/30 hover:brightness-110 transition-all active:scale-95"
                     >
                         Save
                     </button>
                 </div>
-            </div>
+            </header>
 
-            {/* Editing Area */}
-            <div className={`flex flex-col flex-1 ${isFocusMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
+            {/* Content Area */}
+            <div className={`flex-1 overflow-auto px-8 pt-8 pb-32 transition-all ${isFocusMode ? 'max-w-4xl mx-auto w-full' : ''}`}>
+                {/* Meta Bar */}
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-2">
+                        <span className="material-symbols-rounded text-primary text-sm">arrow_back</span>
+                        <span className="text-primary font-bold text-xs tracking-widest uppercase">Drafts</span>
+                    </div>
+                    <div className="flex items-center gap-6">
+                        <button className="text-rose-400">
+                            <span className="material-symbols-rounded fill-current">favorite</span>
+                        </button>
+                        <button className="w-6 h-6 rounded bg-violet-500"></button>
+                        <button className="text-slate-400">
+                            <span className="material-symbols-rounded text-xl">more_horiz</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Title */}
                 <input
                     type="text"
                     placeholder="Note Title"
-                    className="bg-transparent text-2xl font-bold text-tokyo-accent mb-3 outline-none placeholder-tokyo-fg/20"
+                    className="w-full bg-transparent text-4xl font-extrabold text-[#1E293B] dark:text-white mb-6 outline-none placeholder-slate-200 dark:placeholder-slate-700 leading-tight"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     autoFocus
                 />
 
-                <input
-                    type="text"
-                    placeholder="Add tags..."
-                    className="bg-transparent text-sm text-tokyo-secondary mb-6 outline-none placeholder-tokyo-fg/20 border-b border-white/5 pb-2 focus:border-tokyo-secondary/50 transition-colors"
-                    value={tagsInput}
-                    onChange={(e) => setTagsInput(e.target.value)}
-                />
-
-                {/* Rich Text Toolbar */}
-                <div className="flex gap-2 mb-2 p-1.5 bg-tokyo-card/50 rounded-lg border border-white/5 w-fit">
-                    <button onClick={handleCopy} className="p-1 hover:bg-white/10 rounded text-xs text-tokyo-fg" title="Copy Content">Copy</button>
-                    <div className="w-px bg-white/10 h-4 self-center"></div>
-                    <button onClick={handlePaste} className="p-1 hover:bg-white/10 rounded text-xs text-tokyo-fg" title="Paste Clipboard">Paste</button>
-                    <div className="w-px bg-white/10 h-4 self-center"></div>
-                    <button onClick={() => insertTextAtCursor('**bold** ')} className="p-1 hover:bg-white/10 rounded text-xs font-bold text-tokyo-fg" title="Bold">B</button>
-                    <button onClick={() => insertTextAtCursor('*italic* ')} className="p-1 hover:bg-white/10 rounded text-xs italic text-tokyo-fg" title="Italic">I</button>
-                    <button onClick={() => insertTextAtCursor('- ')} className="p-1 hover:bg-white/10 rounded text-xs text-tokyo-fg" title="List">• List</button>
-                </div>
-
-                <div className="flex-1 relative group">
-                    <textarea
-                        ref={textareaRef}
-                        placeholder="Start writing..."
-                        className={`w-full h-full bg-transparent text-tokyo-fg resize-none outline-none leading-relaxed placeholder-tokyo-fg/20 custom-scrollbar p-2 -ml-2 rounded-lg transition-colors ${isDragOver ? 'bg-tokyo-accent/10 border-2 border-dashed border-tokyo-accent' : ''}`}
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                    />
-
-                    {/* Voice Button */}
+                {/* Tags */}
+                <div className="flex flex-wrap gap-3 mb-8 items-center">
+                    {tags.map((tag, idx) => (
+                        <div
+                            key={idx}
+                            className={`px-4 py-1.5 rounded-full flex items-center gap-2 text-sm font-bold ${idx % 2 === 0
+                                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                    : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'
+                                }`}
+                        >
+                            #{tag}
+                            <button onClick={() => {
+                                const newTags = tags.filter((_, i) => i !== idx);
+                                setTagsInput(newTags.join(', '));
+                            }}>
+                                <span className="material-symbols-rounded text-sm">close</span>
+                            </button>
+                        </div>
+                    ))}
                     <button
-                        onClick={toggleVoice}
-                        className={`absolute bottom-4 right-4 p-3 rounded-full shadow-xl transition-all hover:scale-110 ${isListening ? 'bg-tokyo-error animate-pulse text-white' : 'bg-tokyo-card text-tokyo-fg hover:text-tokyo-accent border border-white/10'}`}
-                        title={isListening ? 'Stop Listening' : 'Start Dictation'}
+                        onClick={() => {
+                            const newTag = prompt('Enter new tag:');
+                            if (newTag) setTagsInput(prev => prev ? `${prev}, ${newTag}` : newTag);
+                        }}
+                        className="text-primary font-bold text-sm ml-1"
                     >
-                        {isListening ? '🛑' : '🎙️'}
+                        + Add tags
                     </button>
                 </div>
 
-                {initialNote?.url && (
-                    <div className="mt-4 pt-4 border-t border-white/5 text-xs text-tokyo-fg-dim truncate">
-                        Linked to: <a href={initialNote.url} target="_blank" rel="noopener noreferrer" className="text-tokyo-accent hover:underline">{initialNote.domain}</a>
-                    </div>
-                )}
+                {/* Toolbar */}
+                <div className="flex items-center gap-4 mb-10 px-6 py-3 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-50 dark:border-slate-700/50 w-fit mx-auto sticky top-0 z-10 transition-shadow hover:shadow-md">
+                    <button onClick={handleCopy} className="text-slate-600 dark:text-slate-300 font-bold text-sm px-2">Copy</button>
+                    <div className="w-px h-4 bg-slate-100 dark:bg-slate-700"></div>
+                    <button onClick={handlePaste} className="text-slate-600 dark:text-slate-300 font-bold text-sm px-2">Paste</button>
+                    <div className="w-px h-4 bg-slate-100 dark:bg-slate-700"></div>
+                    <button onClick={() => insertTextAtCursor('**bold** ')} className="text-slate-800 dark:text-white font-extrabold text-lg px-2">B</button>
+                    <button onClick={() => insertTextAtCursor('*italic* ')} className="text-slate-800 dark:text-white italic text-lg px-2">I</button>
+                    <div className="w-px h-4 bg-slate-100 dark:bg-slate-700"></div>
+                    <button onClick={() => insertTextAtCursor('- ')} className="flex items-center gap-2 text-slate-800 dark:text-white font-bold text-sm px-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary/60"></span>
+                        List
+                    </button>
+                </div>
+
+                {/* Editor Surface */}
+                <div className="relative min-h-[400px]">
+                    <textarea
+                        ref={textareaRef}
+                        placeholder="Start your masterpiece here..."
+                        className="w-full h-full min-h-[400px] bg-transparent text-slate-600 dark:text-slate-300 text-xl resize-none outline-none leading-relaxed placeholder-slate-200 dark:placeholder-slate-700"
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                    />
+                </div>
             </div>
+
+            {/* Voice FAB */}
+            <button
+                onClick={toggleVoice}
+                className={`fixed bottom-24 right-8 w-20 h-20 rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-105 active:scale-95 z-50 ${isListening
+                        ? 'bg-rose-500 animate-pulse text-white'
+                        : 'bg-primary text-white shadow-primary/40'
+                    }`}
+                title={isListening ? 'Stop Listening' : 'Start Dictation'}
+            >
+                <span className="material-symbols-rounded text-3xl">mic</span>
+                {!isListening && (
+                    <div className="absolute inset-0 rounded-full bg-primary animate-ping opacity-20"></div>
+                )}
+            </button>
+
+            {/* Footer */}
+            <footer className="px-8 py-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900">
+                {initialNote?.url ? (
+                    <div className="flex items-center gap-2 text-xs font-medium">
+                        <span className="material-symbols-rounded text-sm">link</span>
+                        Linked to: <a href={initialNote.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{initialNote.domain}</a>
+                    </div>
+                ) : (
+                    <div className="text-xs font-medium">New Draft</div>
+                )}
+                <div className="w-4 h-4 rounded-tl-full border-t border-l border-primary/20"></div>
+            </footer>
         </div>
     );
 };
