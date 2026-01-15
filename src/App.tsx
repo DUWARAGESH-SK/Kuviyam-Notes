@@ -7,10 +7,11 @@ import { TagModal } from './components/TagModal';
 
 function App() {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [view, setView] = useState<'list' | 'edit'>('list');
+  const [view, setView] = useState<'list' | 'edit' | 'favorites'>('list');
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [currentDomain, setCurrentDomain] = useState<string>('');
   const [statusMsg, setStatusMsg] = useState('');
+  const [isDark, setIsDark] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -18,6 +19,15 @@ function App() {
 
   useEffect(() => {
     loadNotes();
+
+    // Theme initialization
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+      setIsDark(true);
+      document.documentElement.classList.add('dark');
+    }
+
     chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
       if (tab?.url) {
         try {
@@ -75,6 +85,18 @@ function App() {
     }
   };
 
+  const toggleTheme = () => {
+    const newDark = !isDark;
+    setIsDark(newDark);
+    if (newDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
+
   const tagStats = useMemo(() => {
     const stats: Record<string, { name: string; count: number; lastUsed: number }> = {};
     notes.forEach(note => {
@@ -96,7 +118,8 @@ function App() {
       n.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
       n.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
     const matchesTag = selectedTag ? n.tags.includes(selectedTag) : true;
-    return matchesSearch && matchesTag;
+    const matchesView = view === 'favorites' ? n.pinned : true;
+    return matchesSearch && matchesTag && matchesView;
   });
 
   const handleCreateNote = async () => {
@@ -144,7 +167,9 @@ function App() {
         <NoteEditor
           initialNote={editingNote}
           onSave={handleSaveNote}
-          onCancel={() => setView('list')}
+          onCancel={() => setView(view === 'edit' ? 'list' : view)}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
         />
       </div>
     );
@@ -173,8 +198,11 @@ function App() {
             >
               <span className="material-symbols-rounded text-[22px]">filter_list</span>
             </button>
-            <button className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform px-0 cursor-pointer">
-              <span className="material-symbols-rounded text-[22px]">lightbulb</span>
+            <button
+              onClick={toggleTheme}
+              className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform px-0 cursor-pointer"
+            >
+              <span className="material-symbols-rounded text-[22px]">{isDark ? 'light_mode' : 'dark_mode'}</span>
             </button>
             <button className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 active:scale-95 transition-transform px-0 cursor-pointer">
               <span className="material-symbols-rounded text-[22px]">menu</span>
@@ -209,7 +237,9 @@ function App() {
 
         {/* Recent Notes */}
         <div className="mb-6 flex justify-between items-center px-1">
-          <h2 className="text-xl font-extrabold text-[#1E293B] dark:text-white">Recent Notes</h2>
+          <h2 className="text-xl font-extrabold text-[#1E293B] dark:text-white">
+            {view === 'favorites' ? 'Favorite Notes' : 'Recent Notes'}
+          </h2>
           <button className="text-slate-400 font-bold text-[10px] tracking-widest uppercase" onClick={() => { }}>See All</button>
         </div>
 
@@ -256,13 +286,19 @@ function App() {
       {/* Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl ios-tab-shadow px-6 pb-8 pt-4 z-50">
         <div className="max-w-md mx-auto relative flex justify-between items-center">
-          <button className="flex flex-col items-center gap-1 group px-0 cursor-pointer">
-            <span className="material-symbols-rounded text-primary">sticky_note_2</span>
-            <span className="text-[10px] font-bold text-primary tracking-wider uppercase">Notes</span>
+          <button
+            onClick={() => setView('list')}
+            className={`flex flex-col items-center gap-1 group px-0 cursor-pointer transition-colors ${view === 'list' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}
+          >
+            <span className="material-symbols-rounded">sticky_note_2</span>
+            <span className="text-[10px] font-bold tracking-wider uppercase">Notes</span>
           </button>
-          <button className="flex flex-col items-center gap-1 group px-0 cursor-pointer">
-            <span className="material-symbols-rounded text-slate-400 dark:text-slate-500">favorite</span>
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Favorites</span>
+          <button
+            onClick={() => setView('favorites')}
+            className={`flex flex-col items-center gap-1 group px-0 cursor-pointer transition-colors ${view === 'favorites' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}
+          >
+            <span className="material-symbols-rounded">favorite</span>
+            <span className="text-[10px] font-bold tracking-wider uppercase">Favorites</span>
           </button>
           <div className="w-16"></div>
           <button className="flex flex-col items-center gap-1 group px-0 cursor-pointer">
