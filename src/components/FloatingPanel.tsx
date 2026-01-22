@@ -22,7 +22,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
     const [isListening, setIsListening] = useState(false);
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [isPinned, setIsPinned] = useState(false);
-    const [noteColor, setNoteColor] = useState('#8B5CF6'); // Purple from image
+    const [noteColor, setNoteColor] = useState('#8B5CF6'); // Purple default
     const [isDark, setIsDark] = useState(false);
     const [showStatus, setShowStatus] = useState<string | null>(null);
 
@@ -31,7 +31,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
     const dragStart = useRef({ x: 0, y: 0 });
     const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 });
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const recognitionRef = useRef<any>(null);
+    const recognitionRef = useRef<SpeechRecognition | null>(null);
 
     useEffect(() => {
         storage.getPanelLayout().then(setLayout);
@@ -41,9 +41,9 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
         chrome.storage.local.get(['panelDraft']).then((res) => {
             const draft = res.panelDraft as any;
             if (draft) {
-                setTitle(draft.title || 'RMD ENGINEERING COLLEGE');
+                setTitle(draft.title || '');
                 setContent(draft.content || '');
-                setTagsInput(draft.tags ? draft.tags.join(', ') : 'education, college');
+                setTagsInput(draft.tags ? draft.tags.join(', ') : '');
                 setIsPinned(draft.pinned || false);
                 setNoteColor(draft.color || '#8B5CF6');
             } else {
@@ -53,21 +53,22 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
         });
 
         if ('webkitSpeechRecognition' in window) {
-            // @ts-ignore
             const SpeechRecognition = window.webkitSpeechRecognition;
             recognitionRef.current = new SpeechRecognition();
-            recognitionRef.current.continuous = true;
-            recognitionRef.current.interimResults = true;
+            if (recognitionRef.current) {
+                recognitionRef.current.continuous = true;
+                recognitionRef.current.interimResults = true;
 
-            recognitionRef.current.onresult = (event: any) => {
-                let finalTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
-                }
-                if (finalTranscript) insertTextAtCursor(finalTranscript + ' ');
-            };
-            recognitionRef.current.onend = () => setIsListening(false);
-            recognitionRef.current.onerror = () => setIsListening(false);
+                recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+                    let finalTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                    }
+                    if (finalTranscript) insertTextAtCursor(finalTranscript + ' ');
+                };
+                recognitionRef.current.onend = () => setIsListening(false);
+                recognitionRef.current.onerror = () => setIsListening(false);
+            }
         }
     }, []);
 
@@ -192,10 +193,10 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
             className={`font-display flex flex-col relative transition-all duration-300 ${isDark ? 'dark' : ''} ${isFocusMode ? 'fixed inset-0 z-[2147483647]' : ''}`}
             style={!isFocusMode ? {
                 position: 'fixed',
-                right: '40px',
-                bottom: '40px',
-                width: '420px',
-                height: '780px',
+                left: `${layout.x}px`, // Using left/top for dragging
+                top: `${layout.y}px`,
+                width: `${layout.width}px`,
+                height: `${layout.height}px`,
                 borderRadius: '40px',
                 boxShadow: '0 30px 60px -12px rgba(0, 0, 0, 0.25)',
                 overflow: 'hidden',
@@ -208,6 +209,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                 height: '100vh',
                 backgroundColor: isDark ? '#0B0F1A' : '#FFFFFF',
                 pointerEvents: 'auto',
+                zIndex: 2147483647,
             }}
         >
             {/* 1. Primary Header */}
@@ -264,7 +266,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                 {/* Secondary Header Row */}
                 {!isFocusMode && (
                     <div className="flex items-center justify-between mb-10">
-                        <button onClick={onClose} className="flex items-center gap-2 group cursor-pointer">
+                        <button onClick={onClose} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
                             <span className="material-symbols-rounded text-[#7070FF] text-xl font-black">arrow_back</span>
                             <span className="text-[#7070FF] font-black text-[13px] tracking-[0.18em] uppercase">Drafts</span>
                         </button>
@@ -293,7 +295,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                 {/* Title Section */}
                 <textarea
                     rows={2}
-                    className="w-full bg-transparent text-[36px] font-black text-[#1E293B] dark:text-white mb-6 outline-none border-none focus:ring-0 placeholder-[#E2E8F0] dark:placeholder-slate-800 leading-[1.1] tracking-tight p-0 uppercase resize-none"
+                    className="w-full bg-transparent text-[36px] font-black text-[#1E293B] dark:text-white mb-6 outline-none border-none focus:ring-0 placeholder-[#E2E8F0] dark:placeholder-slate-800 leading-[1.1] tracking-tight p-0 uppercase resize-none font-display placeholder:font-black"
                     placeholder="UNTITLED NOTE"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -327,15 +329,15 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                 </div>
 
                 {/* Rich Toolbar - Centered & Premium */}
-                <div className="flex items-center gap-1 mb-14 px-8 py-5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-[32px] shadow-[0_15px_45px_-10px_rgba(0,0,0,0.12)] border border-slate-50 dark:border-slate-700/50 w-fit mx-auto sticky top-4 z-10 transition-all hover:shadow-[0_20px_55px_-10px_rgba(0,0,0,0.15)]">
+                <div className="flex items-center gap-1 mb-14 px-8 py-5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-[32px] shadow-[0_15px_45px_-10px_rgba(0,0,0,0.12)] border border-slate-50 dark:border-slate-700/50 w-fit mx-auto sticky top-4 z-10 transition-all hover:shadow-[0_20px_55px_-10px_rgba(0,0,0,0.15)] ring-1 ring-slate-900/5">
                     <button onClick={() => { navigator.clipboard.writeText(content); displayStatus('Copied!'); }} className="text-[#64748B] dark:text-slate-400 font-black text-[15px] px-4 hover:text-[#1E293B] dark:hover:text-white transition-colors cursor-pointer">Copy</button>
                     <div className="w-[1px] h-6 bg-slate-100 dark:bg-slate-700 mx-1"></div>
                     <button onClick={async () => insertTextAtCursor(await navigator.clipboard.readText())} className="text-[#64748B] dark:text-slate-400 font-black text-[15px] px-4 hover:text-[#1E293B] dark:hover:text-white transition-colors cursor-pointer">Paste</button>
                     <div className="w-[1px] h-6 bg-slate-100 dark:bg-slate-700 mx-1"></div>
-                    <button onClick={() => insertTextAtCursor('**bold** ')} className="text-[#1E293B] dark:text-white font-black text-[20px] px-4 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl cursor-pointer">B</button>
-                    <button onClick={() => insertTextAtCursor('*italic* ')} className="text-[#1E293B] dark:text-white italic text-[20px] px-4 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl cursor-pointer">I</button>
+                    <button onClick={() => insertTextAtCursor('**bold** ')} className="text-[#1E293B] dark:text-white font-black text-[20px] px-4 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl cursor-pointer transition-colors">B</button>
+                    <button onClick={() => insertTextAtCursor('*italic* ')} className="text-[#1E293B] dark:text-white italic text-[20px] px-4 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl cursor-pointer transition-colors">I</button>
                     <div className="w-[1px] h-6 bg-slate-100 dark:bg-slate-700 mx-1"></div>
-                    <button onClick={() => insertTextAtCursor('- ')} className="flex items-center gap-2.5 px-4 h-10 text-[15px] font-black text-[#64748B] dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl cursor-pointer">
+                    <button onClick={() => insertTextAtCursor('- ')} className="flex items-center gap-2.5 px-4 h-10 text-[15px] font-black text-[#64748B] dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl cursor-pointer transition-colors">
                         <span className="w-3 h-3 rounded-full bg-[#7070FF]"></span>
                         List
                     </button>
@@ -345,7 +347,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                     <textarea
                         ref={textareaRef}
                         placeholder="Start your masterpiece here..."
-                        className="w-full h-full min-h-[400px] bg-transparent text-[#64748B] dark:text-slate-400 text-[26px] font-medium resize-none outline-none border-none focus:ring-0 leading-[1.65] placeholder-[#E2E8F0] dark:placeholder-slate-800 p-0"
+                        className="w-full h-full min-h-[400px] bg-transparent text-[#64748B] dark:text-slate-400 text-[26px] font-medium resize-none outline-none border-none focus:ring-0 leading-[1.65] placeholder-[#E2E8F0] dark:placeholder-slate-800 p-0 font-display"
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                     />
@@ -355,7 +357,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
             {/* 3. Real Mic FAB */}
             <button
                 onClick={toggleVoice}
-                className={`fixed bottom-16 right-12 w-[100px] h-[100px] rounded-full flex items-center justify-center shadow-[0_25px_60px_-10px_rgba(112,112,255,0.5)] transition-all hover:scale-105 active:scale-95 z-50 cursor-pointer ${isListening ? 'bg-[#F43F5E] animate-pulse text-white' : 'bg-[#7070FF] text-white'
+                className={`fixed bottom-16 right-12 w-[100px] h-[100px] rounded-full flex items-center justify-center shadow-[0_25px_60px_-10px_rgba(112,112,255,0.5)] transition-all hover:scale-105 active:scale-95 z-50 cursor-pointer ${isListening ? 'bg-[#F43F5E] animate-pulse text-white' : 'bg-[#7070FF] text-white hover:bg-[#6060FF]'
                     }`}
             >
                 <span className="material-symbols-rounded text-[48px]">mic</span>
@@ -363,11 +365,11 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
 
             {/* 4. Footer & Triangle Accent */}
             {!isFocusMode && (
-                <footer className="px-10 py-10 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between bg-white/80 dark:bg-[#0B0F1A]/80 backdrop-blur-xl">
+                <footer className="px-10 py-10 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between bg-white/80 dark:bg-[#0B0F1A]/80 backdrop-blur-xl rounded-b-[40px]">
                     <div className="flex items-center gap-4 text-[#94A3B8] dark:text-slate-500 font-bold text-[15px]">
                         <span className="material-symbols-rounded text-[22px]">link</span>
                         <span>Linked to:</span>
-                        <a href={`https://${window.location.hostname}`} target="_blank" className="text-[#7070FF] font-black hover:underline transition-all">
+                        <a href="#" className="text-[#7070FF] font-black hover:underline transition-all truncate max-w-[150px]">
                             {window.location.hostname}
                         </a>
                     </div>
@@ -378,6 +380,12 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
             <div className="absolute bottom-0 right-0 w-12 h-12 overflow-hidden pointer-events-none rounded-br-[40px]">
                 <div className="absolute bottom-[-24px] right-[-24px] w-12 h-12 bg-[#7070FF]/15 rotate-45"></div>
             </div>
+
+            {/* Resizer Handle */}
+            <div
+                onMouseDown={handleResizeDown}
+                className="absolute bottom-0 right-0 w-8 h-8 cursor-nwse-resize z-[60]"
+            />
 
             {showStatus && (
                 <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[10000] px-7 py-3.5 bg-[#1E293B] text-white rounded-3xl shadow-2xl font-black text-[14px] animate-in fade-in slide-in-from-top-4 duration-300">
