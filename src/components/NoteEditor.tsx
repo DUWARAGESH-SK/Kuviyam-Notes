@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Note, NoteDraft } from '../types';
+import type { Note, NoteDraft, Folder } from '../types';
+import { storage } from '../utils/storage';
 
 interface NoteEditorProps {
     initialNote?: Note | null;
@@ -19,17 +20,23 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
     const [isPinned, setIsPinned] = useState(false);
     const [noteColor, setNoteColor] = useState('#8B5CF6'); // Default purple
     const [showStatus, setShowStatus] = useState<string | null>(null);
+    const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
+    const [folders, setFolders] = useState<Folder[]>([]);
+    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const recognitionRef = useRef<any>(null);
 
     useEffect(() => {
+        loadFolders();
         if (initialNote) {
             setTitle(initialNote.title);
             setContent(initialNote.content);
             setTagsInput(initialNote.tags.join(', '));
             setIsPinned(initialNote.pinned || false);
             setNoteColor(initialNote.color || '#8B5CF6');
+            setSelectedFolderIds(initialNote.folderIds || []);
         }
 
         if ('webkitSpeechRecognition' in window) {
@@ -55,6 +62,19 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
             recognitionRef.current.onerror = () => setIsListening(false);
         }
     }, [initialNote]);
+
+    const loadFolders = async () => {
+        const loaded = await storage.getFolders();
+        setFolders(loaded);
+    };
+
+    const handleCreateFolder = async () => {
+        if (!newFolderName.trim()) return;
+        const newFolder = await storage.createFolder(newFolderName.trim());
+        setFolders(prev => [newFolder, ...prev]);
+        setSelectedFolderIds(prev => [...prev, newFolder.id]);
+        setNewFolderName('');
+    };
 
     const insertTextAtCursor = (text: string) => {
         if (textareaRef.current) {
@@ -92,7 +112,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
             domain: initialNote?.domain,
             url: initialNote?.url,
             pinned: isPinned,
-            color: noteColor
+            color: noteColor,
+            folderIds: selectedFolderIds
         }, initialNote?.id);
     };
 
@@ -138,7 +159,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
                 domain: initialNote?.domain,
                 url: initialNote?.url,
                 pinned: newPinned,
-                color: noteColor
+                color: noteColor,
+                folderIds: selectedFolderIds
             }, initialNote?.id);
         }
 
@@ -275,6 +297,87 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                 />
+
+                {/* Folder Selection Pills */}
+                <div className="flex flex-wrap gap-2 mb-6">
+                    {selectedFolderIds.map(id => {
+                        const folder = folders.find(f => f.id === id);
+                        if (!folder) return null;
+                        return (
+                            <div key={id} className="flex items-center gap-1 pl-3 pr-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-300">
+                                <span className="material-symbols-rounded text-sm">folder</span>
+                                <span>{folder.name}</span>
+                                <button
+                                    onClick={() => setSelectedFolderIds(prev => prev.filter(fid => fid !== id))}
+                                    className="ml-1 p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
+                                >
+                                    <span className="material-symbols-rounded text-sm">close</span>
+                                </button>
+                            </div>
+                        );
+                    })}
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsFolderModalOpen(!isFolderModalOpen)}
+                            className="flex items-center gap-1 pl-2 pr-3 py-1 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-xs font-bold text-[#7070FF] transition-colors cursor-pointer border border-dashed border-[#7070FF]/30"
+                        >
+                            <span className="material-symbols-rounded text-sm">add</span>
+                            <span>Add to Folder</span>
+                        </button>
+
+                        {/* Folder Dropdown */}
+                        {isFolderModalOpen && (
+                            <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 p-3 animate-scale-in">
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">Select Folder</h4>
+                                <div className="max-h-48 overflow-y-auto mb-2 space-y-1 custom-scrollbar">
+                                    {folders.length === 0 ? (
+                                        <p className="text-xs text-slate-400 px-1 py-1 italic">No folders yet</p>
+                                    ) : (
+                                        folders.map(folder => (
+                                            <label key={folder.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedFolderIds.includes(folder.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedFolderIds(prev => [...prev, folder.id]);
+                                                        } else {
+                                                            setSelectedFolderIds(prev => prev.filter(id => id !== folder.id));
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/50"
+                                                />
+                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{folder.name}</span>
+                                            </label>
+                                        ))
+                                    )}
+                                </div>
+                                <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="New Folder"
+                                        className="flex-1 h-8 px-2 text-sm bg-slate-50 dark:bg-slate-800 border-none rounded-lg focus:ring-1 focus:ring-primary/50"
+                                        value={newFolderName}
+                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+                                        autoFocus
+                                    />
+                                    <button
+                                        onClick={handleCreateFolder}
+                                        disabled={!newFolderName.trim()}
+                                        className="w-8 h-8 flex items-center justify-center bg-primary text-slate-900 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 active:scale-95 transition-all"
+                                    >
+                                        <span className="material-symbols-rounded text-lg">add</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        {/* Click outside to close */}
+                        {isFolderModalOpen && (
+                            <div className="fixed inset-0 z-40" onClick={() => setIsFolderModalOpen(false)}></div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Tag Cluster */}
                 <div className="flex flex-wrap gap-3 mb-12 items-center">
