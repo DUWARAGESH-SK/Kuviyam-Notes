@@ -5,6 +5,7 @@ import { NoteEditor } from './components/NoteEditor';
 import { TagBar } from './components/TagBar';
 import { TagModal } from './components/TagModal';
 import { FoldersPanel } from './components/FoldersPanel';
+import { FolderSelectionModal } from './components/FolderSelectionModal';
 
 function App() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -18,8 +19,15 @@ function App() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
 
+  // Folder Selection Modal State
+  const [isFolderSelectOpen, setIsFolderSelectOpen] = useState(false);
+  const [noteForFolderSelect, setNoteForFolderSelect] = useState<Note | null>(null);
+  const [activeMenuNoteId, setActiveMenuNoteId] = useState<string | null>(null);
+
   useEffect(() => {
     loadNotes();
+    const closeMenu = () => setActiveMenuNoteId(null);
+    document.addEventListener('click', closeMenu);
 
     // Theme initialization
     const savedTheme = localStorage.getItem('theme');
@@ -36,6 +44,8 @@ function App() {
         } catch (e) { /* ignore */ }
       }
     });
+
+    return () => document.removeEventListener('click', closeMenu);
   }, []);
 
   const loadNotes = async () => {
@@ -161,6 +171,27 @@ function App() {
       await loadNotes();
     }
   };
+
+  const handleMenuClick = (e: React.MouseEvent, noteId: string) => {
+    e.stopPropagation();
+    setActiveMenuNoteId(activeMenuNoteId === noteId ? null : noteId);
+  }
+
+  const handleAddToFolderClick = (e: React.MouseEvent, note: Note) => {
+    e.stopPropagation();
+    setNoteForFolderSelect(note);
+    setIsFolderSelectOpen(true);
+    setActiveMenuNoteId(null);
+  }
+
+  const handleFolderSave = async (folderIds: string[]) => {
+    if (noteForFolderSelect) {
+      const updatedNote = { ...noteForFolderSelect, folderIds, updatedAt: Date.now() };
+      await storage.saveNote(updatedNote);
+      await loadNotes();
+      setNoteForFolderSelect(null);
+    }
+  }
 
   if (view === 'edit') {
     return (
@@ -302,7 +333,7 @@ function App() {
               <div
                 key={note.id}
                 onClick={() => handleEditNote(note)}
-                className="bg-white dark:bg-slate-800 p-4 rounded-[2rem] shadow-sm border border-slate-50 dark:border-slate-700/50 flex items-center gap-4 transition-all hover:shadow-md cursor-pointer group"
+                className="bg-white dark:bg-slate-800 p-4 rounded-[2rem] shadow-sm border border-slate-50 dark:border-slate-700/50 flex items-center gap-4 transition-all hover:shadow-md cursor-pointer group relative"
               >
                 <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white ${index % 3 === 0 ? 'bg-indigo-500' : index % 3 === 1 ? 'bg-orange-500' : 'bg-teal-500'
                   }`}>
@@ -313,19 +344,46 @@ function App() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title || 'Untitled'}</h3>
                   <p className="text-slate-400 text-sm truncate">{note.content || 'No content...'}</p>
-                  <p className="text-[10px] font-bold text-slate-300 uppercase mt-1">
-                    {new Date(note.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}
+                  <p className="flex items-center gap-2 text-[10px] font-bold text-slate-300 uppercase mt-1">
+                    <span>{new Date(note.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}</span>
+                    {note.folderIds && note.folderIds.length > 0 && (
+                      <span className="text-primary flex items-center gap-0.5">
+                        <span className="material-symbols-rounded text-[12px]">folder</span>
+                        {note.folderIds.length}
+                      </span>
+                    )}
                   </p>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteNote(note.id);
-                  }}
-                  className="text-slate-300 hover:text-rose-500 transition-colors px-0 cursor-pointer"
-                >
-                  <span className="material-symbols-rounded">more_vert</span>
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={(e) => handleMenuClick(e, note.id)}
+                    className="text-slate-300 hover:text-slate-500 dark:hover:text-white transition-colors px-0 cursor-pointer p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                  >
+                    <span className="material-symbols-rounded">more_vert</span>
+                  </button>
+                  {/* Dropdown Menu */}
+                  {activeMenuNoteId === note.id && (
+                    <div className="absolute right-0 top-10 w-48 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 z-50 overflow-hidden animate-scale-in origin-top-right">
+                      <button
+                        onClick={(e) => handleAddToFolderClick(e, note)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors"
+                      >
+                        <span className="material-symbols-rounded text-slate-400 text-[20px]">drive_file_move</span>
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Add to Folder</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteNote(note.id);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/10 text-left transition-colors text-rose-500"
+                      >
+                        <span className="material-symbols-rounded text-[20px]">delete</span>
+                        <span className="text-sm font-bold">Delete</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -386,8 +444,19 @@ function App() {
         selectedTag={selectedTag}
         onTagSelect={setSelectedTag}
       />
+
+      <FolderSelectionModal
+        isOpen={isFolderSelectOpen}
+        onClose={() => {
+          setIsFolderSelectOpen(false);
+          setNoteForFolderSelect(null);
+        }}
+        initialSelectedFolderIds={noteForFolderSelect?.folderIds || []}
+        onSave={handleFolderSave}
+      />
     </div>
   );
 }
 
 export default App;
+
