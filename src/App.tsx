@@ -6,6 +6,7 @@ import { TagBar } from './components/TagBar';
 import { TagModal } from './components/TagModal';
 import { FoldersPanel } from './components/FoldersPanel';
 import { FolderSelectionModal } from './components/FolderSelectionModal';
+import { SettingsModal } from './components/SettingsModal';
 
 function App() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -23,6 +24,9 @@ function App() {
   const [isFolderSelectOpen, setIsFolderSelectOpen] = useState(false);
   const [noteForFolderSelect, setNoteForFolderSelect] = useState<Note | null>(null);
   const [activeMenuNoteId, setActiveMenuNoteId] = useState<string | null>(null);
+
+  // Settings State
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     loadNotes();
@@ -172,6 +176,15 @@ function App() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    await chrome.storage.local.clear();
+    setNotes([]);
+    setEditingNote(null);
+    setCurrentDomain('');
+    setStatusMsg('All data deleted');
+    setTimeout(() => setStatusMsg(''), 2000);
+  };
+
   const handleMenuClick = (e: React.MouseEvent, noteId: string) => {
     e.stopPropagation();
     setActiveMenuNoteId(activeMenuNoteId === noteId ? null : noteId);
@@ -236,7 +249,10 @@ function App() {
               <span className="material-symbols-rounded">folder</span>
               <span className="text-[10px] font-bold tracking-wider uppercase">Folders</span>
             </button>
-            <button className="flex flex-col items-center gap-1 group px-0 cursor-pointer">
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="flex flex-col items-center gap-1 group px-0 cursor-pointer"
+            >
               <span className="material-symbols-rounded text-slate-400 dark:text-slate-500">settings</span>
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Settings</span>
             </button>
@@ -415,7 +431,10 @@ function App() {
             <span className="material-symbols-rounded">folder</span>
             <span className="text-[10px] font-bold tracking-wider uppercase">Folders</span>
           </button>
-          <button className="flex flex-col items-center gap-1 group px-0 cursor-pointer">
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex flex-col items-center gap-1 group px-0 cursor-pointer"
+          >
             <span className="material-symbols-rounded text-slate-400 dark:text-slate-500">settings</span>
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Settings</span>
           </button>
@@ -453,6 +472,12 @@ function App() {
         }}
         initialSelectedFolderIds={noteForFolderSelect?.folderIds || []}
         onSave={handleFolderSave}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onDeleteAll={handleDeleteAll}
       />
     </div>
   );
