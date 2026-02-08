@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { Folder, Note } from '../types';
 import { storage } from '../utils/storage';
+import { AddNotesToFolderModal } from './AddNotesToFolderModal';
+import { FocusMode } from './FocusMode';
 
 export function FoldersPanel() {
     const [folders, setFolders] = useState<Folder[]>([]); // Current level folders
@@ -10,6 +12,8 @@ export function FoldersPanel() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
+    const [isAddNotesModalOpen, setIsAddNotesModalOpen] = useState(false);
+    const [focusedNote, setFocusedNote] = useState<Note | null>(null);
 
     useEffect(() => {
         loadContent();
@@ -61,6 +65,16 @@ export function FoldersPanel() {
             await storage.saveNote(updatedNote);
             await loadContent();
         }
+        await loadContent();
+    };
+
+    const handleToggleFavorite = async (note: Note) => {
+        const updatedNote = { ...note, pinned: !note.pinned };
+        await storage.saveNote(updatedNote);
+        if (focusedNote?.id === note.id) {
+            setFocusedNote(updatedNote);
+        }
+        await loadContent();
     };
 
     const filteredFolders = folders.filter(f =>
@@ -87,9 +101,20 @@ export function FoldersPanel() {
                             </h1>
                         </div>
                         <div className="flex gap-2">
+                            {currentFolderId && (
+                                <button
+                                    onClick={() => setIsAddNotesModalOpen(true)}
+                                    className="px-4 h-10 rounded-full bg-indigo-500 text-white shadow-sm flex items-center gap-2 active:scale-95 transition-transform cursor-pointer font-bold text-sm"
+                                    title="Add notes to this folder"
+                                >
+                                    <span className="material-symbols-rounded text-[18px]">note_add</span>
+                                    <span>Add Notes</span>
+                                </button>
+                            )}
                             <button
                                 onClick={() => setIsCreateModalOpen(true)}
                                 className="w-10 h-10 rounded-full bg-primary text-slate-900 shadow-sm flex items-center justify-center active:scale-95 transition-transform px-0 cursor-pointer"
+                                title="Create subfolder"
                             >
                                 <span className="material-symbols-rounded text-xl">add</span>
                             </button>
@@ -147,18 +172,30 @@ export function FoldersPanel() {
                         ) : (
                             <div className="space-y-3">
                                 {notes.map(note => (
-                                    <div key={note.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-50 dark:border-slate-700/50 flex items-center justify-between group">
-                                        <div>
-                                            <h4 className="font-bold text-slate-800 dark:text-white truncate max-w-[200px]">{note.title || 'Untitled'}</h4>
-                                            <p className="text-xs text-slate-400 truncate max-w-[200px]">{note.content}</p>
+                                    <div
+                                        key={note.id}
+                                        onClick={() => setFocusedNote(note)}
+                                        className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-50 dark:border-slate-700/50 flex items-center justify-between group cursor-pointer hover:shadow-md hover:border-indigo-500/30 transition-all active:scale-[0.99]"
+                                    >
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-bold text-slate-800 dark:text-white truncate pr-4">{note.title || 'Untitled'}</h4>
+                                            <p className="text-xs text-slate-400 truncate pr-4">{note.content}</p>
                                         </div>
-                                        <button
-                                            onClick={() => handleRemoveNoteFromFolder(note)}
-                                            className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-rose-500 transition-all"
-                                            title="Remove from folder"
-                                        >
-                                            <span className="material-symbols-rounded">playlist_remove</span>
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                            {note.pinned && (
+                                                <span className="material-symbols-rounded text-amber-400 text-[18px]">star</span>
+                                            )}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleRemoveNoteFromFolder(note);
+                                                }}
+                                                className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-rose-500 transition-all"
+                                                title="Remove from folder"
+                                            >
+                                                <span className="material-symbols-rounded">playlist_remove</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -208,6 +245,32 @@ export function FoldersPanel() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Add Notes to Folder Modal */}
+            {currentFolderId && currentFolder && (
+                <AddNotesToFolderModal
+                    isOpen={isAddNotesModalOpen}
+                    onClose={() => setIsAddNotesModalOpen(false)}
+                    folderId={currentFolderId}
+                    folderName={currentFolder.name}
+                    onNotesAdded={loadContent}
+                />
+            )}
+
+            {/* Focus Mode Overlay */}
+            {focusedNote && (
+                <FocusMode
+                    note={focusedNote}
+                    onClose={() => setFocusedNote(null)}
+                    onEdit={() => {
+                        // For now just close focus mode, in a real app we'd trigger the edit view
+                        setFocusedNote(null);
+                        // Communicate with App.tsx if needed
+                    }}
+                    onToggleFavorite={() => handleToggleFavorite(focusedNote)}
+                    isDark={true} // Default to dark for focus mode as per spec
+                />
             )}
         </div>
     );
