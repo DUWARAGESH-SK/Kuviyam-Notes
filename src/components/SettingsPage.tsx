@@ -24,6 +24,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onDeleteAll }) => {
     const [selectedDeleteIds, setSelectedDeleteIds] = useState<string[]>([]);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Filter State
+    const [downloadFilter, setDownloadFilter] = useState<'alpha-asc' | 'alpha-desc' | 'recent' | 'oldest'>('alpha-asc');
+    const [deleteFilter, setDeleteFilter] = useState<'alpha-asc' | 'alpha-desc' | 'recent' | 'oldest'>('alpha-asc');
+    const [showDownloadFilter, setShowDownloadFilter] = useState(false);
+    const [showDeleteFilter, setShowDeleteFilter] = useState(false);
+
     // Website List State
     const [linkedWebsites, setLinkedWebsites] = useState<{ domain: string, url: string, count: number, favicon?: string }[]>([]);
 
@@ -167,8 +173,47 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onDeleteAll }) => {
         }
     };
 
-    const downloadItems = selectedDownloadType === 'notes' ? notes : folders;
-    const deleteItems = selectedDeleteType === 'notes' ? notes : folders;
+    // Apply filters
+    const applyFilter = (items: (Note | Folder)[], filter: string, type: 'notes' | 'folders') => {
+        const sorted = [...items];
+        if (filter === 'alpha-asc') {
+            sorted.sort((a, b) => {
+                const nameA = type === 'notes' ? (a as Note).title || 'Untitled' : (a as Folder).name;
+                const nameB = type === 'notes' ? (b as Note).title || 'Untitled' : (b as Folder).name;
+                return nameA.localeCompare(nameB);
+            });
+        } else if (filter === 'alpha-desc') {
+            sorted.sort((a, b) => {
+                const nameA = type === 'notes' ? (a as Note).title || 'Untitled' : (a as Folder).name;
+                const nameB = type === 'notes' ? (b as Note).title || 'Untitled' : (b as Folder).name;
+                return nameB.localeCompare(nameA);
+            });
+        } else if (filter === 'recent') {
+            sorted.sort((a, b) => {
+                const timeA = type === 'notes' ? (a as Note).updatedAt : (a as Folder).createdAt;
+                const timeB = type === 'notes' ? (b as Note).updatedAt : (b as Folder).createdAt;
+                return new Date(timeB).getTime() - new Date(timeA).getTime();
+            });
+        } else if (filter === 'oldest') {
+            sorted.sort((a, b) => {
+                const timeA = type === 'notes' ? (a as Note).updatedAt : (a as Folder).createdAt;
+                const timeB = type === 'notes' ? (b as Note).updatedAt : (b as Folder).createdAt;
+                return new Date(timeA).getTime() - new Date(timeB).getTime();
+            });
+        }
+        return sorted;
+    };
+
+    const downloadItems = applyFilter(
+        selectedDownloadType === 'notes' ? notes : folders,
+        downloadFilter,
+        selectedDownloadType
+    );
+    const deleteItems = applyFilter(
+        selectedDeleteType === 'notes' ? notes : folders,
+        deleteFilter,
+        selectedDeleteType
+    );
 
     return (
         <div className="w-full h-full flex bg-white dark:bg-background-dark text-slate-800 dark:text-slate-100 font-display">
@@ -192,10 +237,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onDeleteAll }) => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as Tab)}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === tab.id
-                                    ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
-                                    : tab.danger
-                                        ? 'text-rose-500 hover:bg-rose-500/10'
-                                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                                ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
+                                : tab.danger
+                                    ? 'text-rose-500 hover:bg-rose-500/10'
+                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                                 }`}
                         >
                             <span className={`material-symbols-rounded text-[20px] ${tab.danger && activeTab !== tab.id ? 'text-rose-500' : ''}`}>{tab.icon}</span>
@@ -283,14 +328,43 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onDeleteAll }) => {
                                         </button>
                                     </div>
 
-                                    <div className="flex items-center gap-3 py-2 border-b border-slate-200 dark:border-white/10">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedDownloadIds.length > 0 && selectedDownloadIds.length === downloadItems.length}
-                                            onChange={toggleDownloadAll}
-                                            className="w-5 h-5 rounded border-slate-300 dark:border-white/20 bg-transparent text-indigo-600 focus:ring-indigo-500/40"
-                                        />
-                                        <span className="text-sm font-bold text-slate-600 dark:text-slate-300">Select All ({downloadItems.length})</span>
+                                    <div className="flex items-center justify-between py-2 border-b border-slate-200 dark:border-white/10">
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedDownloadIds.length > 0 && selectedDownloadIds.length === downloadItems.length}
+                                                onChange={toggleDownloadAll}
+                                                className="w-5 h-5 rounded border-slate-300 dark:border-white/20 bg-transparent text-indigo-600 focus:ring-indigo-500/40"
+                                            />
+                                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300">Select All ({downloadItems.length})</span>
+                                        </div>
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setShowDownloadFilter(!showDownloadFilter)}
+                                                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                                            >
+                                                <span className="material-symbols-rounded text-slate-600 dark:text-slate-400 text-[20px]">filter_list</span>
+                                            </button>
+                                            {showDownloadFilter && (
+                                                <div className="absolute right-0 top-full mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-white/10 p-2 w-48 z-50">
+                                                    {[
+                                                        { id: 'alpha-asc', label: 'A → Z', icon: 'sort_by_alpha' },
+                                                        { id: 'alpha-desc', label: 'Z → A', icon: 'sort_by_alpha' },
+                                                        { id: 'recent', label: 'Most Recent', icon: 'schedule' },
+                                                        { id: 'oldest', label: 'Oldest First', icon: 'history' }
+                                                    ].map(option => (
+                                                        <button
+                                                            key={option.id}
+                                                            onClick={() => { setDownloadFilter(option.id as any); setShowDownloadFilter(false); }}
+                                                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all ${downloadFilter === option.id ? 'bg-indigo-500 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+                                                        >
+                                                            <span className="material-symbols-rounded text-[16px]">{option.icon}</span>
+                                                            {option.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar min-h-[200px] max-h-[400px]">
@@ -359,14 +433,43 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onDeleteAll }) => {
                                         </button>
                                     </div>
 
-                                    <div className="flex items-center gap-3 py-2 border-b border-slate-200 dark:border-white/10">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedDeleteIds.length > 0 && selectedDeleteIds.length === deleteItems.length}
-                                            onChange={toggleDeleteAll}
-                                            className="w-5 h-5 rounded border-slate-300 dark:border-white/20 bg-transparent text-rose-600 focus:ring-rose-500/40"
-                                        />
-                                        <span className="text-sm font-bold text-slate-600 dark:text-slate-300">Select All ({deleteItems.length})</span>
+                                    <div className="flex items-center justify-between py-2 border-b border-slate-200 dark:border-white/10">
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedDeleteIds.length > 0 && selectedDeleteIds.length === deleteItems.length}
+                                                onChange={toggleDeleteAll}
+                                                className="w-5 h-5 rounded border-slate-300 dark:border-white/20 bg-transparent text-rose-600 focus:ring-rose-500/40"
+                                            />
+                                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300">Select All ({deleteItems.length})</span>
+                                        </div>
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setShowDeleteFilter(!showDeleteFilter)}
+                                                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                                            >
+                                                <span className="material-symbols-rounded text-slate-600 dark:text-slate-400 text-[20px]">filter_list</span>
+                                            </button>
+                                            {showDeleteFilter && (
+                                                <div className="absolute right-0 top-full mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-white/10 p-2 w-48 z-50">
+                                                    {[
+                                                        { id: 'alpha-asc', label: 'A → Z', icon: 'sort_by_alpha' },
+                                                        { id: 'alpha-desc', label: 'Z → A', icon: 'sort_by_alpha' },
+                                                        { id: 'recent', label: 'Most Recent', icon: 'schedule' },
+                                                        { id: 'oldest', label: 'Oldest First', icon: 'history' }
+                                                    ].map(option => (
+                                                        <button
+                                                            key={option.id}
+                                                            onClick={() => { setDeleteFilter(option.id as any); setShowDeleteFilter(false); }}
+                                                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all ${deleteFilter === option.id ? 'bg-rose-500 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+                                                        >
+                                                            <span className="material-symbols-rounded text-[16px]">{option.icon}</span>
+                                                            {option.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar min-h-[200px] max-h-[400px]">
