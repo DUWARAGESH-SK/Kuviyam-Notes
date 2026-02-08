@@ -23,8 +23,6 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
     const [isListening, setIsListening] = useState(false);
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [isPinned, setIsPinned] = useState(false);
-    const [noteColor, setNoteColor] = useState('#8B5CF6'); // Purple default
-    const [isDark, setIsDark] = useState(false);
     const [showStatus, setShowStatus] = useState<string | null>(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
@@ -38,8 +36,6 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
 
     useEffect(() => {
         storage.getPanelLayout().then(setLayout);
-        const savedTheme = localStorage.getItem('theme');
-        setIsDark(savedTheme === 'dark');
 
         chrome.storage.local.get(['panelDraft']).then((res) => {
             const draft = res.panelDraft as any;
@@ -48,11 +44,10 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                 setContent(draft.content || '');
                 setTagsInput(draft.tags ? draft.tags.join(', ') : '');
                 setIsPinned(draft.pinned || false);
-                setNoteColor(draft.color || '#8B5CF6');
                 setSelectedFolderIds(draft.folderIds || []);
             } else {
-                setTitle('RMD ENGINEERING COLLEGE');
-                setTagsInput('education, college');
+                setTitle('');
+                setTagsInput('');
             }
         });
 
@@ -82,12 +77,11 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
             content,
             tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
             pinned: isPinned,
-            color: noteColor,
             folderIds: selectedFolderIds,
             updatedAt: Date.now()
         };
         chrome.storage.local.set({ panelDraft: draft });
-    }, [title, content, tagsInput, isPinned, noteColor]);
+    }, [title, content, tagsInput, isPinned, selectedFolderIds]);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -165,26 +159,13 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
             content,
             tags,
             pinned: isPinned,
-            color: noteColor,
+            color: '#8B5CF6', // Default fallback, but removing UI control
             domain: window.location.hostname,
             url: window.location.href,
             folderIds: selectedFolderIds
         };
-        await storage.createNote(draft);
+        await storage.createNote(draft); // This function needs to exist in your storage interface
         displayStatus('Note Saved!');
-    };
-
-    const handleExport = () => {
-        const textToExport = `Title: ${title}\n\n${content}\n\nTags: ${tagsInput}`;
-        const blob = new Blob([textToExport], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${title.replace(/[^a-z0-9]/gi, '_')}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        displayStatus('Exported!');
     };
 
     const displayStatus = (msg: string) => {
@@ -196,204 +177,166 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
 
     return (
         <div
-            className={`font-display flex flex-col relative transition-all duration-300 ${isDark ? 'dark' : ''} ${isFocusMode ? 'fixed inset-0 z-[2147483647]' : ''}`}
+            className={`font-display flex flex-col relative transition-all duration-300 dark ${isFocusMode ? 'fixed inset-0 z-[2147483647]' : ''}`}
             style={!isFocusMode ? {
                 position: 'fixed',
-                left: `${layout.x}px`, // Using left/top for dragging
+                left: `${layout.x}px`,
                 top: `${layout.y}px`,
                 width: `${layout.width}px`,
                 height: `${layout.height}px`,
-                borderRadius: '40px',
-                boxShadow: '0 30px 60px -12px rgba(0, 0, 0, 0.25)',
+                borderRadius: '32px',
+                boxShadow: '0 40px 80px -20px rgba(0, 0, 0, 0.4)',
                 overflow: 'hidden',
                 zIndex: 2147483647,
                 pointerEvents: 'auto',
-                backgroundColor: isDark ? '#0B0F1A' : '#FFFFFF',
-                border: '1px solid rgba(112, 112, 255, 0.08)',
+                backgroundColor: '#0F1115', // Deep smooth dark
+                border: '1px solid rgba(255, 255, 255, 0.08)',
             } : {
                 width: '100vw',
                 height: '100vh',
-                backgroundColor: isDark ? '#0B0F1A' : '#FFFFFF',
+                backgroundColor: '#0F1115',
                 pointerEvents: 'auto',
                 zIndex: 2147483647,
             }}
         >
-            {/* 1. Primary Header */}
+            {/* 1. Primary Header - Minimal & Floating */}
             <header
                 onMouseDown={handleDragDown}
-                className="px-8 py-7 flex items-center justify-between bg-white dark:bg-[#0B0F1A] border-b border-slate-50 dark:border-slate-800/50 cursor-move select-none"
+                className="px-8 py-6 flex items-center justify-between cursor-move select-none z-20"
             >
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onClose}
-                        className="w-12 h-12 rounded-full border border-slate-100 dark:border-slate-800 flex items-center justify-center bg-white dark:bg-slate-900 shadow-sm hover:bg-slate-50 transition-all active:scale-95 cursor-pointer"
+                        className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all active:scale-95 cursor-pointer backdrop-blur-sm"
                     >
-                        <span className="material-symbols-rounded text-slate-500 dark:text-slate-400 text-[24px]">chevron_left</span>
+                        <span className="material-symbols-rounded text-white/50 text-[20px]">chevron_left</span>
                     </button>
-                    <div className="flex flex-col">
-                        <span className="text-[20px] font-black text-[#1E293B] dark:text-white leading-tight">Sticky</span>
-                        <span className="text-[20px] font-black text-[#1E293B] dark:text-white leading-tight">Note</span>
-                    </div>
+                    {!isFocusMode && <span className="text-[16px] font-bold text-white/40 tracking-wide uppercase">New Note</span>}
                 </div>
 
-                <div className="flex items-center gap-4" onMouseDown={e => e.stopPropagation()}>
-                    <div className="flex bg-[#F8FAFC] dark:bg-slate-800/80 p-1.5 rounded-full gap-1 border border-slate-50 dark:border-slate-700/50">
-                        <button className="w-11 h-11 flex items-center justify-center text-[#EAB308] hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer" title="AI Assist">
-                            <span className="material-symbols-rounded text-[24px] fill-current">lightbulb</span>
-                        </button>
-                        <button onClick={handleExport} className="w-11 h-11 flex items-center justify-center text-[#F97316] hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer" title="Share/Export">
-                            <span className="material-symbols-rounded text-[24px]">ios_share</span>
-                        </button>
-                        <button onClick={() => setIsFocusMode(true)} className="w-11 h-11 flex items-center justify-center text-[#8B5CF6] hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer" title="Expand">
-                            <span className="material-symbols-rounded text-[24px]">open_in_full</span>
-                        </button>
-                    </div>
+                <div className="flex items-center gap-3" onMouseDown={e => e.stopPropagation()}>
+                    <button onClick={() => setIsFocusMode(!isFocusMode)} className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white rounded-full transition-colors cursor-pointer" title="Focus Mode">
+                        <span className="material-symbols-rounded text-[20px]">{isFocusMode ? 'close_fullscreen' : 'open_in_full'}</span>
+                    </button>
                     <button
                         onClick={handleSave}
-                        className="bg-[#7070FF] text-white px-9 py-3.5 rounded-[22px] font-black text-[15px] shadow-[0_12px_35px_-5px_rgba(112,112,255,0.5)] hover:brightness-110 active:scale-95 transition-all tracking-tight cursor-pointer"
+                        className="bg-indigo-600 text-white px-6 py-2.5 rounded-full font-bold text-[14px] hover:bg-indigo-500 active:scale-95 transition-all shadow-[0_10px_20px_-10px_rgba(79,70,229,0.5)] cursor-pointer"
                     >
                         Save
                     </button>
                 </div>
             </header>
 
-            {isFocusMode && (
-                <button
-                    onClick={() => setIsFocusMode(false)}
-                    className="fixed top-8 right-8 w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center z-[10000] text-slate-500 hover:text-[#7070FF] transition-all shadow-xl cursor-pointer"
-                >
-                    <span className="material-symbols-rounded text-2xl">close_fullscreen</span>
-                </button>
-            )}
+            {/* 2. Content Body - Layout Engine */}
+            <main className={`flex-1 flex flex-col relative overflow-hidden transition-all ${isFocusMode ? 'max-w-4xl mx-auto w-full pt-12' : ''}`}>
 
-            {/* 2. Content Body */}
-            <main className={`flex-1 overflow-auto px-10 pb-32 pt-8 transition-all ${isFocusMode ? 'pt-24 max-w-4xl mx-auto w-full' : ''}`}>
-
-                {/* Secondary Header Row */}
-                {!isFocusMode && (
-                    <div className="flex items-center justify-between mb-10">
-                        <button onClick={onClose} className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
-                            <span className="material-symbols-rounded text-[#7070FF] text-xl font-black">arrow_back</span>
-                            <span className="text-[#7070FF] font-black text-[13px] tracking-[0.18em] uppercase">Drafts</span>
-                        </button>
-                        <div className="flex items-center gap-7">
-                            <button
-                                onClick={() => setIsPinned(!isPinned)}
-                                className={`transition-all duration-300 hover:scale-125 cursor-pointer ${isPinned ? 'text-[#F43F5E]' : 'text-slate-300 dark:text-slate-700'}`}
-                            >
-                                <span className={`material-symbols-rounded text-[28px] ${isPinned ? 'fill-current' : ''}`}>favorite</span>
-                            </button>
-                            <button
-                                onClick={() => setIsFolderModalOpen(true)}
-                                className="text-slate-300 dark:text-slate-700 hover:text-primary transition-colors cursor-pointer"
-                                title="Add to Folder"
-                            >
-                                <span className={`material-symbols-rounded text-[24px] ${selectedFolderIds.length > 0 ? 'fill-current text-primary' : ''}`}>create_new_folder</span>
-                            </button>
-                            <button className="text-slate-300 dark:text-slate-700 hover:text-slate-500 transition-colors cursor-pointer">
-                                <span className="material-symbols-rounded text-[32px]">more_horiz</span>
-                            </button>
-                        </div>
+                {/* Secondary Actions (Discrete Folder & Fav) */}
+                <div className="px-10 flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-1">
+                        <span className="text-white/20 text-xs font-bold uppercase tracking-wider">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                     </div>
-                )}
-
-                {/* Title Section */}
-                <textarea
-                    rows={2}
-                    className="w-full bg-transparent text-[36px] font-black text-[#1E293B] dark:text-white mb-6 outline-none border-none focus:ring-0 placeholder-[#E2E8F0] dark:placeholder-slate-800 leading-[1.1] tracking-tight p-0 uppercase resize-none font-display placeholder:font-black"
-                    placeholder="UNTITLED NOTE"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                />
-
-                {/* Tags Pill Cluster */}
-                <div className="flex flex-wrap gap-3 mb-12 items-center">
-                    {tags.map((tag, idx) => (
-                        <div
-                            key={idx}
-                            className={`px-5 py-2.5 rounded-full flex items-center gap-3 text-[14px] font-black shadow-sm ${idx === 0
-                                ? 'bg-[#DCFCE7] text-[#166534] dark:bg-[#064E3B] dark:text-[#34D399]'
-                                : 'bg-[#FEF9C3] text-[#854D0E] dark:bg-[#78350F] dark:text-[#FBBF24]'
-                                }`}
+                    <div className="flex items-center gap-3 bg-white/5 p-1.5 rounded-full backdrop-blur-md">
+                        <button
+                            onClick={() => setIsPinned(!isPinned)}
+                            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all cursor-pointer hover:bg-white/5 ${isPinned ? 'text-rose-500' : 'text-white/30 hover:text-white'}`}
+                            title="Add to Favorites"
                         >
-                            #{tag.toLowerCase()}
-                            <button onClick={() => setTagsInput(tags.filter((_, i) => i !== idx).join(', '))} className="opacity-40 hover:opacity-100 flex items-center cursor-pointer">
-                                <span className="material-symbols-rounded text-[18px]">close</span>
-                            </button>
+                            <span className={`material-symbols-rounded text-[20px] ${isPinned ? 'fill-current' : ''}`}>favorite</span>
+                        </button>
+                        <div className="w-[1px] h-4 bg-white/10"></div>
+                        <button
+                            onClick={() => setIsFolderModalOpen(true)}
+                            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all cursor-pointer hover:bg-white/5 ${selectedFolderIds.length > 0 ? 'text-indigo-400' : 'text-white/30 hover:text-white'}`}
+                            title="Organize"
+                        >
+                            <span className={`material-symbols-rounded text-[20px] ${selectedFolderIds.length > 0 ? 'fill-current' : ''}`}>create_new_folder</span>
+                        </button>
+                        <button className="w-9 h-9 flex items-center justify-center rounded-full text-white/30 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
+                            <span className="material-symbols-rounded text-[20px]">more_vert</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Scroll Container - Only scrolls when needed */}
+                <div className="flex-1 overflow-y-auto overflow-x-hidden px-10 pb-32 custom-scrollbar">
+
+                    {/* Title */}
+                    <textarea
+                        rows={1}
+                        className="w-full bg-transparent text-[40px] font-black text-white mb-6 outline-none border-none focus:ring-0 placeholder-white/20 leading-[1.1] tracking-tight p-0 resize-none font-display overflow-hidden"
+                        placeholder="Untitled"
+                        value={title}
+                        onChange={(e) => {
+                            setTitle(e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = e.target.scrollHeight + 'px';
+                        }}
+                    />
+
+                    {/* Tags */}
+                    {tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-8 animate-fade-in">
+                            {tags.map((tag, idx) => (
+                                <span key={idx} className="px-3 py-1 rounded-lg bg-indigo-500/10 text-indigo-300 text-[13px] font-bold border border-indigo-500/20">
+                                    #{tag}
+                                </span>
+                            ))}
                         </div>
-                    ))}
+                    )}
+
+                    {/* Tag Input Trigger (Hidden/Discrete) */}
                     <button
                         onClick={() => {
-                            const newTag = prompt('Add tag:');
-                            if (newTag) setTagsInput(prev => prev ? `${prev}, ${newTag}` : newTag);
+                            const newTag = prompt('Add tags (comma separated):', tagsInput);
+                            if (newTag !== null) setTagsInput(newTag);
                         }}
-                        className="text-[#7070FF] font-black text-[14px] ml-1 hover:underline transition-all cursor-pointer"
+                        className="text-white/20 text-sm font-bold hover:text-indigo-400 transition-colors mb-8 flex items-center gap-2 group w-fit"
                     >
-                        + Add tags
+                        <span className="material-symbols-rounded text-lg group-hover:scale-110 transition-transform">tag</span>
+                        Actualize Tags
                     </button>
-                </div>
 
-                {/* Rich Toolbar - Centered & Premium */}
-                <div className="flex items-center gap-1 mb-14 px-8 py-5 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-[32px] shadow-[0_15px_45px_-10px_rgba(0,0,0,0.12)] border border-slate-50 dark:border-slate-700/50 w-fit mx-auto sticky top-4 z-10 transition-all hover:shadow-[0_20px_55px_-10px_rgba(0,0,0,0.15)] ring-1 ring-slate-900/5">
-                    <button onClick={() => { navigator.clipboard.writeText(content); displayStatus('Copied!'); }} className="text-[#64748B] dark:text-slate-400 font-black text-[15px] px-4 hover:text-[#1E293B] dark:hover:text-white transition-colors cursor-pointer">Copy</button>
-                    <div className="w-[1px] h-6 bg-slate-100 dark:bg-slate-700 mx-1"></div>
-                    <button onClick={async () => insertTextAtCursor(await navigator.clipboard.readText())} className="text-[#64748B] dark:text-slate-400 font-black text-[15px] px-4 hover:text-[#1E293B] dark:hover:text-white transition-colors cursor-pointer">Paste</button>
-                    <div className="w-[1px] h-6 bg-slate-100 dark:bg-slate-700 mx-1"></div>
-                    <button onClick={() => insertTextAtCursor('**bold** ')} className="text-[#1E293B] dark:text-white font-black text-[20px] px-4 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl cursor-pointer transition-colors">B</button>
-                    <button onClick={() => insertTextAtCursor('*italic* ')} className="text-[#1E293B] dark:text-white italic text-[20px] px-4 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl cursor-pointer transition-colors">I</button>
-                    <div className="w-[1px] h-6 bg-slate-100 dark:bg-slate-700 mx-1"></div>
-                    <button onClick={() => insertTextAtCursor('- ')} className="flex items-center gap-2.5 px-4 h-10 text-[15px] font-black text-[#64748B] dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl cursor-pointer transition-colors">
-                        <span className="w-3 h-3 rounded-full bg-[#7070FF]"></span>
-                        List
-                    </button>
-                </div>
-
-                <div className="relative min-h-[400px]">
+                    {/* Editor Content - Auto expanding, left aligned */}
                     <textarea
                         ref={textareaRef}
-                        placeholder="Start your masterpiece here..."
-                        className="w-full h-full min-h-[400px] bg-transparent text-[#64748B] dark:text-slate-400 text-[26px] font-medium resize-none outline-none border-none focus:ring-0 leading-[1.65] placeholder-[#E2E8F0] dark:placeholder-slate-800 p-0 font-display"
+                        placeholder="Type something amazing..."
+                        className="w-full min-h-[60vh] bg-transparent text-slate-300 text-[20px] font-medium resize-none outline-none border-none focus:ring-0 leading-[1.7] placeholder-white/10 p-0 font-display text-left"
                         value={content}
-                        onChange={(e) => setContent(e.target.value)}
+                        onChange={(e) => {
+                            setContent(e.target.value);
+                            // Auto-height logic if needed, but flex-1 handles scroll
+                            e.target.style.height = 'auto';
+                            e.target.style.height = Math.max(e.target.scrollHeight, 400) + 'px';
+                        }}
                     />
                 </div>
             </main>
 
-            {/* 3. Real Mic FAB */}
-            <button
-                onClick={toggleVoice}
-                className={`fixed bottom-16 right-12 w-[100px] h-[100px] rounded-full flex items-center justify-center shadow-[0_25px_60px_-10px_rgba(112,112,255,0.5)] transition-all hover:scale-105 active:scale-95 z-50 cursor-pointer ${isListening ? 'bg-[#F43F5E] animate-pulse text-white' : 'bg-[#7070FF] text-white hover:bg-[#6060FF]'
-                    }`}
-            >
-                <span className="material-symbols-rounded text-[48px]">mic</span>
-            </button>
-
-            {/* 4. Footer & Triangle Accent */}
-            {!isFocusMode && (
-                <footer className="px-10 py-10 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between bg-white/80 dark:bg-[#0B0F1A]/80 backdrop-blur-xl rounded-b-[40px]">
-                    <div className="flex items-center gap-4 text-[#94A3B8] dark:text-slate-500 font-bold text-[15px]">
-                        <span className="material-symbols-rounded text-[22px]">link</span>
-                        <span>Linked to:</span>
-                        <a href="#" className="text-[#7070FF] font-black hover:underline transition-all truncate max-w-[150px]">
-                            {window.location.hostname}
-                        </a>
-                    </div>
-                </footer>
-            )}
-
-            {/* The Blue Triangle Accent - Inset in Footer area */}
-            <div className="absolute bottom-0 right-0 w-12 h-12 overflow-hidden pointer-events-none rounded-br-[40px]">
-                <div className="absolute bottom-[-24px] right-[-24px] w-12 h-12 bg-[#7070FF]/15 rotate-45"></div>
+            {/* 3. Floating Tools - Bottom Right */}
+            <div className={`absolute bottom-8 right-8 flex flex-col items-center gap-4 transition-all ${isFocusMode ? 'bottom-12 right-12' : ''}`}>
+                <div className="flex flex-col gap-2 bg-white/10 backdrop-blur-xl p-2 rounded-[20px] border border-white/10 shadow-2xl scale-0 group-hover:scale-100 transition-all origin-bottom-center hidden">
+                    {/* Rich text tools could go here as popup */}
+                </div>
+                <button
+                    onClick={toggleVoice}
+                    className={`w-[70px] h-[70px] rounded-full flex items-center justify-center shadow-[0_20px_40px_-10px_rgba(79,70,229,0.5)] transition-all hover:scale-105 active:scale-95 z-50 cursor-pointer backdrop-blur-md border border-white/20 ${isListening ? 'bg-rose-500 text-white animate-pulse' : 'bg-indigo-600/90 text-white hover:bg-indigo-600'}`}
+                >
+                    <span className="material-symbols-rounded text-[32px]">mic</span>
+                </button>
             </div>
 
-            {/* Resizer Handle */}
-            <div
-                onMouseDown={handleResizeDown}
-                className="absolute bottom-0 right-0 w-8 h-8 cursor-nwse-resize z-[60]"
-            />
+            {/* Resizer */}
+            {!isFocusMode && (
+                <div
+                    onMouseDown={handleResizeDown}
+                    className="absolute bottom-0 right-0 w-8 h-8 cursor-nwse-resize z-[60] flex items-end justify-end p-1.5 opacity-0 hover:opacity-100 transition-opacity"
+                >
+                    <div className="w-2 h-2 rounded-full bg-white/20"></div>
+                </div>
+            )}
 
             {showStatus && (
-                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[10000] px-7 py-3.5 bg-[#1E293B] text-white rounded-3xl shadow-2xl font-black text-[14px] animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[10000] px-8 py-4 bg-black/80 backdrop-blur-xl text-white rounded-2xl shadow-2xl font-bold text-[16px] animate-in fade-in zoom-in duration-200 border border-white/10">
                     {showStatus}
                 </div>
             )}
@@ -404,12 +347,12 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                 initialSelectedFolderIds={selectedFolderIds}
                 onSave={(ids) => {
                     setSelectedFolderIds(ids);
-                    displayStatus('Folders selected');
+                    displayStatus('Folders updated');
                 }}
             />
         </div>
-
     );
 };
 
 export default FloatingPanel;
+
