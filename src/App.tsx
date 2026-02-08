@@ -25,8 +25,6 @@ function App() {
   const [noteForFolderSelect, setNoteForFolderSelect] = useState<Note | null>(null);
   const [activeMenuNoteId, setActiveMenuNoteId] = useState<string | null>(null);
 
-  const [activeMenuNoteId, setActiveMenuNoteId] = useState<string | null>(null);
-
   useEffect(() => {
     loadNotes();
     const closeMenu = () => setActiveMenuNoteId(null);
@@ -249,11 +247,11 @@ function App() {
               <span className="text-[10px] font-bold tracking-wider uppercase">Folders</span>
             </button>
             <button
-              onClick={() => setIsSettingsOpen(true)}
-              className="flex flex-col items-center gap-1 group px-0 cursor-pointer"
+              onClick={() => setView('settings')}
+              className="flex flex-col items-center gap-1 group px-0 cursor-pointer transition-colors text-slate-400 dark:text-slate-500"
             >
-              <span className="material-symbols-rounded text-slate-400 dark:text-slate-500">settings</span>
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Settings</span>
+              <span className="material-symbols-rounded">settings</span>
+              <span className="text-[10px] font-bold tracking-wider uppercase">Settings</span>
             </button>
             {/* Floating Action Button */}
             <div className="absolute left-1/2 -translate-x-1/2 -top-12">
@@ -431,11 +429,11 @@ function App() {
             <span className="text-[10px] font-bold tracking-wider uppercase">Folders</span>
           </button>
           <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="flex flex-col items-center gap-1 group px-0 cursor-pointer"
+            onClick={() => setView('settings')}
+            className={`flex flex-col items-center gap-1 group px-0 cursor-pointer transition-colors ${view === 'settings' ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}
           >
-            <span className="material-symbols-rounded text-slate-400 dark:text-slate-500">settings</span>
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">Settings</span>
+            <span className="material-symbols-rounded">settings</span>
+            <span className="text-[10px] font-bold tracking-wider uppercase">Settings</span>
           </button>
           {/* Floating Action Button */}
           <div className="absolute left-1/2 -translate-x-1/2 -top-12">
@@ -471,12 +469,6 @@ function App() {
         }}
         initialSelectedFolderIds={noteForFolderSelect?.folderIds || []}
         onSave={handleFolderSave}
-      />
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onDeleteAll={handleDeleteAll}
       />
     </div>
   );
