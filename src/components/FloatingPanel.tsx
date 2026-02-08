@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { storage } from '../utils/storage';
 import { FolderSelectionModal } from './FolderSelectionModal';
+import { SettingsModal } from './SettingsModal';
 import type { PanelLayout, NoteDraft } from '../types';
 
 interface FloatingPanelProps {
@@ -26,6 +27,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
     const [isPinned, setIsPinned] = useState(false);
     const [showStatus, setShowStatus] = useState<string | null>(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
 
     const [isDragging, setIsDragging] = useState(false);
@@ -160,13 +162,31 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
             content,
             tags,
             pinned: isPinned,
-            color: '#8B5CF6', // Default fallback, but removing UI control
+            color: '#8B5CF6', // Default fallback
             domain: window.location.hostname,
             url: window.location.href,
+            favicon: document.querySelector("link[rel~='icon']") ? (document.querySelector("link[rel~='icon']") as HTMLLinkElement).href : `https://www.google.com/s2/favicons?domain=${window.location.hostname}`,
             folderIds: selectedFolderIds
         };
-        await storage.createNote(draft); // This function needs to exist in your storage interface
+        await storage.createNote(draft);
         displayStatus('Note Saved!');
+        // Reset fields after save? Optional, but good for "New Note" flow
+        setTitle('');
+        setContent('');
+        setTagsInput('');
+        setIsPinned(false);
+        setSelectedFolderIds([]);
+    };
+
+    const handleDeleteAll = async () => {
+        await chrome.storage.local.clear();
+        // Reset local state
+        setTitle('');
+        setContent('');
+        setTagsInput('');
+        setIsPinned(false);
+        setSelectedFolderIds([]);
+        displayStatus('All data deleted');
     };
 
     const displayStatus = (msg: string) => {
@@ -257,7 +277,10 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                         >
                             <span className={`material-symbols-rounded text-[20px] ${selectedFolderIds.length > 0 ? 'fill-current' : ''}`}>create_new_folder</span>
                         </button>
-                        <button className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 dark:text-white/30 hover:text-slate-700 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5 transition-all cursor-pointer">
+                        <button
+                            onClick={() => setIsSettingsOpen(true)}
+                            className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 dark:text-white/30 hover:text-slate-700 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5 transition-all cursor-pointer"
+                        >
                             <span className="material-symbols-rounded text-[20px]">more_vert</span>
                         </button>
                     </div>
@@ -355,6 +378,12 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                     setSelectedFolderIds(ids);
                     displayStatus('Folders updated');
                 }}
+            />
+
+            <SettingsModal
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                onDeleteAll={handleDeleteAll}
             />
         </div>
     );
