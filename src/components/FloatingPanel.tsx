@@ -22,6 +22,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
     const [tagsInput, setTagsInput] = useState('');
     const [isListening, setIsListening] = useState(false);
     const [isFocusMode, setIsFocusMode] = useState(false);
+    const [isDark, setIsDark] = useState(true);
     const [isPinned, setIsPinned] = useState(false);
     const [showStatus, setShowStatus] = useState<string | null>(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
@@ -177,7 +178,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
 
     return (
         <div
-            className={`font-display flex flex-col relative transition-all duration-300 dark ${isFocusMode ? 'fixed inset-0 z-[2147483647]' : ''}`}
+            className={`font-display flex flex-col relative transition-all duration-300 ${isDark ? 'dark' : ''} ${isFocusMode ? 'fixed inset-0 z-[2147483647]' : ''}`}
             style={!isFocusMode ? {
                 position: 'fixed',
                 left: `${layout.x}px`,
@@ -189,14 +190,16 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                 overflow: 'hidden',
                 zIndex: 2147483647,
                 pointerEvents: 'auto',
-                backgroundColor: '#0F1115', // Deep smooth dark
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: isDark ? '#0F1115' : '#ffffff',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.08)',
+                color: isDark ? 'white' : '#1e293b'
             } : {
                 width: '100vw',
                 height: '100vh',
-                backgroundColor: '#0F1115',
+                backgroundColor: isDark ? '#0F1115' : '#ffffff',
                 pointerEvents: 'auto',
                 zIndex: 2147483647,
+                color: isDark ? 'white' : '#1e293b'
             }}
         >
             {/* 1. Primary Header - Minimal & Floating */}
@@ -207,15 +210,18 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all active:scale-95 cursor-pointer backdrop-blur-sm"
+                        className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center transition-all active:scale-95 cursor-pointer backdrop-blur-sm"
                     >
-                        <span className="material-symbols-rounded text-white/50 text-[20px]">chevron_left</span>
+                        <span className="material-symbols-rounded text-slate-500 dark:text-white/50 text-[20px]">chevron_left</span>
                     </button>
-                    {!isFocusMode && <span className="text-[16px] font-bold text-white/40 tracking-wide uppercase">New Note</span>}
+                    {!isFocusMode && <span className="text-[16px] font-bold text-slate-400 dark:text-white/40 tracking-wide uppercase">New Note</span>}
                 </div>
 
                 <div className="flex items-center gap-3" onMouseDown={e => e.stopPropagation()}>
-                    <button onClick={() => setIsFocusMode(!isFocusMode)} className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white rounded-full transition-colors cursor-pointer" title="Focus Mode">
+                    <button onClick={() => setIsDark(!isDark)} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:text-white/40 dark:hover:text-white rounded-full transition-colors cursor-pointer" title={isDark ? 'Light Mode' : 'Dark Mode'}>
+                        <span className="material-symbols-rounded text-[20px]">{isDark ? 'light_mode' : 'dark_mode'}</span>
+                    </button>
+                    <button onClick={() => setIsFocusMode(!isFocusMode)} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:text-white/40 dark:hover:text-white rounded-full transition-colors cursor-pointer" title="Focus Mode">
                         <span className="material-symbols-rounded text-[20px]">{isFocusMode ? 'close_fullscreen' : 'open_in_full'}</span>
                     </button>
                     <button
@@ -233,25 +239,25 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                 {/* Secondary Actions (Discrete Folder & Fav) */}
                 <div className="px-10 flex items-center justify-between mb-8">
                     <div className="flex items-center gap-1">
-                        <span className="text-white/20 text-xs font-bold uppercase tracking-wider">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                        <span className="text-slate-400 dark:text-white/20 text-xs font-bold uppercase tracking-wider">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                     </div>
-                    <div className="flex items-center gap-3 bg-white/5 p-1.5 rounded-full backdrop-blur-md">
+                    <div className="flex items-center gap-3 bg-slate-100 dark:bg-white/5 p-1.5 rounded-full backdrop-blur-md">
                         <button
                             onClick={() => setIsPinned(!isPinned)}
-                            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all cursor-pointer hover:bg-white/5 ${isPinned ? 'text-rose-500' : 'text-white/30 hover:text-white'}`}
+                            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all cursor-pointer hover:bg-white/50 dark:hover:bg-white/5 ${isPinned ? 'text-rose-500' : 'text-slate-400 dark:text-white/30 hover:text-slate-700 dark:hover:text-white'}`}
                             title="Add to Favorites"
                         >
                             <span className={`material-symbols-rounded text-[20px] ${isPinned ? 'fill-current' : ''}`}>favorite</span>
                         </button>
-                        <div className="w-[1px] h-4 bg-white/10"></div>
+                        <div className="w-[1px] h-4 bg-slate-300 dark:bg-white/10"></div>
                         <button
                             onClick={() => setIsFolderModalOpen(true)}
-                            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all cursor-pointer hover:bg-white/5 ${selectedFolderIds.length > 0 ? 'text-indigo-400' : 'text-white/30 hover:text-white'}`}
+                            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all cursor-pointer hover:bg-white/50 dark:hover:bg-white/5 ${selectedFolderIds.length > 0 ? 'text-indigo-500 dark:text-indigo-400' : 'text-slate-400 dark:text-white/30 hover:text-slate-700 dark:hover:text-white'}`}
                             title="Organize"
                         >
                             <span className={`material-symbols-rounded text-[20px] ${selectedFolderIds.length > 0 ? 'fill-current' : ''}`}>create_new_folder</span>
                         </button>
-                        <button className="w-9 h-9 flex items-center justify-center rounded-full text-white/30 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
+                        <button className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 dark:text-white/30 hover:text-slate-700 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5 transition-all cursor-pointer">
                             <span className="material-symbols-rounded text-[20px]">more_vert</span>
                         </button>
                     </div>
@@ -263,7 +269,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                     {/* Title */}
                     <textarea
                         rows={1}
-                        className="w-full bg-transparent text-[40px] font-black text-white mb-6 outline-none border-none focus:ring-0 placeholder-white/20 leading-[1.1] tracking-tight p-0 resize-none font-display overflow-hidden"
+                        className="w-full bg-transparent text-[40px] font-black text-slate-800 dark:text-white mb-6 outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/20 leading-[1.1] tracking-tight p-0 resize-none font-display overflow-hidden"
                         placeholder="Untitled"
                         value={title}
                         onChange={(e) => {
@@ -290,7 +296,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                             const newTag = prompt('Add tags (comma separated):', tagsInput);
                             if (newTag !== null) setTagsInput(newTag);
                         }}
-                        className="text-white/20 text-sm font-bold hover:text-indigo-400 transition-colors mb-8 flex items-center gap-2 group w-fit"
+                        className="text-slate-400 dark:text-white/20 text-sm font-bold hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors mb-8 flex items-center gap-2 group w-fit"
                     >
                         <span className="material-symbols-rounded text-lg group-hover:scale-110 transition-transform">tag</span>
                         Actualize Tags
@@ -300,7 +306,7 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({ onClose }) => {
                     <textarea
                         ref={textareaRef}
                         placeholder="Type something amazing..."
-                        className="w-full min-h-[60vh] bg-transparent text-slate-300 text-[20px] font-medium resize-none outline-none border-none focus:ring-0 leading-[1.7] placeholder-white/10 p-0 font-display text-left"
+                        className="w-full min-h-[60vh] bg-transparent text-slate-700 dark:text-slate-300 text-[20px] font-medium resize-none outline-none border-none focus:ring-0 leading-[1.7] placeholder-slate-400 dark:placeholder-white/10 p-0 font-display text-left"
                         value={content}
                         onChange={(e) => {
                             setContent(e.target.value);
