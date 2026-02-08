@@ -7,6 +7,7 @@ export interface Note {
     tags: string[];
     url?: string;  // For contextual notes
     domain?: string; // For filtering by site
+    favicon?: string; // Stored favicon URL
     pinned: boolean;
     color?: string;
     position?: { x: number; y: number }; // Legacy field
