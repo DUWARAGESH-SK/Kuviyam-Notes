@@ -1,89 +1,84 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { storage } from '../utils/storage';
-import { FolderSelectionModal } from './FolderSelectionModal';
-import { SettingsModal } from './SettingsModal';
 import type { PanelLayout, NoteDraft } from '../types';
 
 interface StickyNotesProps {
     onClose: () => void;
 }
 
-type ResizeDirection = 'nw' | 'ne' | 'sw' | 'se' | null;
-
 const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
     const [layout, setLayout] = useState<PanelLayout>({
         x: 50,
         y: 50,
-        width: 480,
-        height: 750,
+        width: 380,
+        height: 500,
         isMinimized: false,
         isOpen: true
     });
 
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
-    const [isFocusMode, setIsFocusMode] = useState(false);
-    const [isDark, setIsDark] = useState(false); // Default to light as per image
-    const [isPinned, setIsPinned] = useState(false);
-    const [showStatus, setShowStatus] = useState<string | null>(null);
-    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
-
+    const [isSaved, setIsSaved] = useState(true);
     const [isDragging, setIsDragging] = useState(false);
-    const [resizeDir, setResizeDir] = useState<ResizeDirection>(null);
+    const [isResizing, setIsResizing] = useState(false);
+
+    // Resize state
+    const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, w: 0, h: 0 });
 
     const dragStart = useRef({ x: 0, y: 0 });
-    const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0, lx: 0, ly: 0 });
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         storage.getPanelLayout().then(setLayout);
 
-        const loadDraft = () => {
-            chrome.storage.local.get(['panelDraft']).then((res) => {
-                const draft = res.panelDraft as any;
-                if (draft) {
-                    setTitle(draft.title || '');
-                    setContent(draft.content || '');
-                    setIsPinned(draft.pinned || false);
-                    setSelectedFolderIds(draft.folderIds || []);
-                }
-            });
-        };
-
-        loadDraft();
-
-        const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
-            if (changes.panelDraft) {
-                const draft = changes.panelDraft.newValue as NoteDraft;
-                if (draft) {
-                    setTitle(draft.title || '');
-                    setContent(draft.content || '');
-                    setIsPinned(draft.pinned || false);
-                    setSelectedFolderIds(draft.folderIds || []);
-                }
+        // Load draft
+        chrome.storage.local.get(['panelDraft']).then((res) => {
+            const draft = res.panelDraft as any;
+            if (draft) {
+                setTitle(draft.title || '');
+                setContent(draft.content || '');
             }
-            if (changes.panelLayout) {
-                setLayout(changes.panelLayout.newValue as PanelLayout);
-            }
-        };
-
-        chrome.storage.onChanged.addListener(handleStorageChange);
-        return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+        });
     }, []);
 
+    // Save layout on change
+    useEffect(() => {
+        if (!isDragging && !isResizing) {
+            storage.savePanelLayout(layout);
+        }
+    }, [layout, isDragging, isResizing]);
+
+    // Save draft content
     useEffect(() => {
         const draft = {
             title,
             content,
-            tags: [], // Using title for hashtag logic now
-            pinned: isPinned,
-            folderIds: selectedFolderIds,
             updatedAt: Date.now()
         };
         chrome.storage.local.set({ panelDraft: draft });
-    }, [title, content, isPinned, selectedFolderIds]);
+        setIsSaved(false);
+    }, [title, content]);
+
+
+    const handleDragStart = (e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('button') ||
+            (e.target as HTMLElement).closest('textarea') ||
+            (e.target as HTMLElement).closest('input')) {
+            return;
+        }
+        setIsDragging(true);
+        dragStart.current = { x: e.clientX - layout.x, y: e.clientY - layout.y };
+    };
+
+    const handleResizeStart = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsResizing(true);
+        setResizeStart({
+            x: e.clientX,
+            y: e.clientY,
+            w: layout.width,
+            h: layout.height
+        });
+    };
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -91,67 +86,29 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                 const newX = e.clientX - dragStart.current.x;
                 const newY = Math.max(0, e.clientY - dragStart.current.y);
                 setLayout(prev => ({ ...prev, x: newX, y: newY }));
-            } else if (resizeDir) {
-                let newW = layout.width;
-                let newH = layout.height;
-                let newX = layout.x;
-                let newY = layout.y;
-
-                const dx = e.clientX - resizeStart.current.x;
-                const dy = e.clientY - resizeStart.current.y;
-
-                if (resizeDir.includes('e')) newW = Math.max(380, resizeStart.current.w + dx);
-                if (resizeDir.includes('w')) {
-                    const potentialW = resizeStart.current.w - dx;
-                    if (potentialW > 380) {
-                        newW = potentialW;
-                        newX = resizeStart.current.lx + dx;
-                    }
-                }
-                if (resizeDir.includes('s')) newH = Math.max(400, resizeStart.current.h + dy);
-                if (resizeDir.includes('n')) {
-                    const potentialH = resizeStart.current.h - dy;
-                    if (potentialH > 400) {
-                        newH = potentialH;
-                        newY = resizeStart.current.ly + dy;
-                    }
-                }
-                setLayout({ ...layout, x: newX, y: newY, width: newW, height: newH });
+            } else if (isResizing) {
+                const dx = e.clientX - resizeStart.x;
+                const dy = e.clientY - resizeStart.y;
+                const newW = Math.max(350, resizeStart.w + dx);
+                const newH = Math.max(400, resizeStart.h + dy);
+                setLayout(prev => ({ ...prev, width: newW, height: newH }));
             }
         };
 
         const handleMouseUp = () => {
-            if (isDragging || resizeDir) {
-                setIsDragging(false);
-                setResizeDir(null);
-                storage.savePanelLayout(layout);
-            }
+            setIsDragging(false);
+            setIsResizing(false);
         };
 
-        if (isDragging || resizeDir) {
+        if (isDragging || isResizing) {
             window.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
+            return () => {
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('mouseup', handleMouseUp);
+            };
         }
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isDragging, resizeDir, layout]);
-
-    const handleDragDown = (e: React.MouseEvent) => {
-        setIsDragging(true);
-        dragStart.current = { x: e.clientX - layout.x, y: e.clientY - layout.y };
-    };
-
-    const handleResizeDown = (dir: ResizeDirection) => (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setResizeDir(dir);
-        resizeStart.current = {
-            x: e.clientX, y: e.clientY,
-            w: layout.width, h: layout.height,
-            lx: layout.x, ly: layout.y
-        };
-    };
+    }, [isDragging, isResizing, resizeStart]);
 
     const handleSave = async () => {
         if (!title.trim() && !content.trim()) return;
@@ -159,182 +116,113 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
             title: title || 'Untitled',
             content,
             tags: [],
-            pinned: isPinned,
+            pinned: false,
             domain: window.location.hostname,
             url: window.location.href,
-            favicon: document.querySelector("link[rel~='icon']") ? (document.querySelector("link[rel~='icon']") as HTMLLinkElement).href : `https://www.google.com/s2/favicons?domain=${window.location.hostname}`,
-            folderIds: selectedFolderIds
+            favicon: `https://www.google.com/s2/favicons?domain=${window.location.hostname}`,
+            folderIds: []
         };
         await storage.createNote(draft);
-        displayStatus('Note Saved!');
-    };
-
-    const displayStatus = (msg: string) => {
-        setShowStatus(msg);
-        setTimeout(() => setShowStatus(null), 2000);
+        setTitle('');
+        setContent('');
+        setIsSaved(true);
+        // Simple alert as fallback status
     };
 
     const formattedDate = new Date().toLocaleDateString('en-GB', {
         weekday: 'long',
         day: 'numeric',
         month: 'long'
-    }).toUpperCase().replace(/(\d+)/, '$1,'); // Simple hack for "MONDAY, 9 FEBRUARY"
+    }).toUpperCase().replace(/(\d+)/, '$1,');
 
     const domain = window.location.hostname || 'chat.deepseek.com';
 
     return (
         <div
-            className={`font-display flex flex-col relative transition-all duration-300 ${isDark ? 'dark' : ''} ${isFocusMode ? 'fixed inset-0 z-[2147483647]' : ''}`}
-            style={!isFocusMode ? {
+            style={{
                 position: 'fixed',
-                left: `${layout.x}px`, top: `${layout.y}px`,
-                width: `${layout.width}px`, height: `${layout.height}px`,
-                minWidth: '380px',
-                borderRadius: '32px',
-                boxShadow: '0 40px 100px -20px rgba(0, 0, 0, 0.2)',
+                left: `${layout.x}px`,
+                top: `${layout.y}px`,
+                width: `${layout.width}px`,
+                height: `${layout.height}px`,
                 zIndex: 2147483647,
-                pointerEvents: 'auto',
-                backgroundColor: isDark ? '#0F1115' : '#ffffff',
-                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.05)',
-                color: isDark ? 'white' : '#1e293b'
-            } : {
-                width: '100vw', height: '100vh',
-                backgroundColor: isDark ? '#0F1115' : '#ffffff',
-                pointerEvents: 'auto', zIndex: 2147483647,
-                color: isDark ? 'white' : '#1e293b'
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', // shadow-2xl equivalent
             }}
+            className="flex flex-col rounded-xl border border-gray-200 bg-white font-sans text-gray-900"
         >
             {/* Header */}
             <header
-                onMouseDown={handleDragDown}
-                className="px-8 py-6 flex items-center justify-between cursor-move select-none border-b border-slate-50 dark:border-white/5 bg-white/50 dark:bg-black/20 backdrop-blur-xl z-20"
+                onMouseDown={handleDragStart}
+                className="px-6 py-4 flex items-center justify-between cursor-move select-none border-b border-gray-100 bg-gray-50 rounded-t-xl"
             >
-                <div className="flex items-center gap-6 flex-shrink-0">
-                    <button
-                        onClick={onClose}
-                        className="w-11 h-11 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex-shrink-0 shadow-sm"
-                    >
-                        <span className="material-symbols-rounded text-slate-500 text-[24px] flex-shrink-0">chevron_left</span>
-                    </button>
-                    <span className="text-[18px] font-extrabold text-[#94A3B8] dark:text-white/40 tracking-wider whitespace-nowrap">EDIT NOTE</span>
-                </div>
-
-                <div className="flex items-center gap-4 flex-shrink-0" onMouseDown={e => e.stopPropagation()}>
-                    <button onClick={() => setIsDark(!isDark)} className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] dark:hover:text-white transition-colors cursor-pointer flex-shrink-0">
-                        <span className="material-symbols-rounded text-[24px] flex-shrink-0">{isDark ? 'dark_mode' : 'light_mode'}</span>
-                    </button>
-                    <button onClick={() => setIsFocusMode(!isFocusMode)} className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] dark:hover:text-white transition-colors cursor-pointer flex-shrink-0">
-                        <span className="material-symbols-rounded text-[24px] flex-shrink-0">{isFocusMode ? 'close_fullscreen' : 'expand_content'}</span>
-                    </button>
+                <span className="text-lg font-bold text-gray-800 tracking-wide">EDIT NOTE</span>
+                <div className="flex items-center gap-2">
                     <button
                         onClick={handleSave}
-                        className="bg-[#4F46E5] text-white px-9 py-2.5 rounded-full font-bold text-[16px] hover:bg-[#4338CA] active:scale-95 transition-all shadow-[0_10px_25px_-5px_rgba(79,70,229,0.4)] ml-2 flex-shrink-0"
+                        className="px-5 py-2 bg-indigo-600 text-white text-sm font-bold rounded-full hover:bg-indigo-700 transition-colors shadow-sm"
                     >
                         Save
+                    </button>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold px-2">
+                        ✕
                     </button>
                 </div>
             </header>
 
-            {/* Main Content Area */}
-            <main className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#0F1115]">
-                <div className={`flex-1 overflow-y-auto px-10 pt-10 pb-32 custom-scrollbar ${isFocusMode ? 'max-w-4xl mx-auto w-full' : ''}`}>
+            {/* Content */}
+            <main className="flex-1 flex flex-col p-6 overflow-hidden bg-white rounded-b-xl relative">
+                <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
 
-                    {/* Date and Action Pill */}
-                    <div className="flex items-center justify-between mb-10">
-                        <span className="text-[#94A3B8] dark:text-white/30 text-[14px] font-bold tracking-[0.1em] whitespace-nowrap">{formattedDate}</span>
-
-                        <div className="flex items-center gap-1 bg-[#F8FAFC] dark:bg-white/5 p-1.5 rounded-full border border-slate-100 dark:border-white/5 flex-shrink-0">
-                            <button onClick={() => setIsPinned(!isPinned)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${isPinned ? 'text-[#4F46E5]' : 'text-[#94A3B8] hover:text-slate-600 dark:hover:text-white'}`}>
-                                <span className={`material-symbols-rounded text-[22px] flex-shrink-0 ${isPinned ? 'fill-current' : ''}`}>favorite</span>
-                            </button>
-                            <div className="w-[1px] h-4 bg-slate-200 dark:bg-white/10 mx-1 flex-shrink-0"></div>
-                            <button onClick={() => setIsFolderModalOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-full text-[#94A3B8] hover:text-slate-600 dark:hover:text-white transition-colors flex-shrink-0">
-                                <span className="material-symbols-rounded text-[22px] flex-shrink-0">create_new_folder</span>
-                            </button>
-                            <button onClick={() => setIsSettingsOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-full text-[#94A3B8] hover:text-slate-600 dark:hover:text-white transition-colors flex-shrink-0">
-                                <span className="material-symbols-rounded text-[22px] flex-shrink-0">more_vert</span>
-                            </button>
-                        </div>
+                    {/* Date */}
+                    <div className="mb-2">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                            {formattedDate}
+                        </span>
                     </div>
 
-                    {/* Linked Domain Pill */}
-                    <div className="mb-12">
-                        <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-[#EEF2FF] dark:bg-indigo-500/5 border border-[#E0E7FF] dark:border-indigo-500/10 rounded-2xl text-[#4F46E5] dark:text-indigo-400 font-bold text-[14px] flex-shrink-0">
-                            <span className="material-symbols-rounded text-[20px] flex-shrink-0">language</span>
-                            <span className="whitespace-nowrap">Linked to {domain}</span>
-                            <span className="material-symbols-rounded text-[18px] ml-1 opacity-50 flex-shrink-0">open_in_new</span>
-                        </div>
+                    {/* Linked Domain */}
+                    <div className="mb-6">
+                        <span className="text-sm font-medium text-indigo-600">
+                            Linked to {domain}
+                        </span>
                     </div>
 
-                    {/* Primary Content Editor */}
-                    <textarea
-                        className="w-full bg-transparent text-[52px] font-black text-[#1E293B] dark:text-white mb-2 outline-none border-none focus:ring-0 placeholder-slate-200 dark:placeholder-white/5 leading-[1.1] tracking-tighter p-0 resize-none font-display overflow-hidden"
-                        placeholder="Type something amazing..."
-                        value={content}
-                        onChange={(e) => {
-                            setContent(e.target.value);
-                            e.target.style.height = 'auto';
-                            e.target.style.height = e.target.scrollHeight + 'px';
-                        }}
-                    />
+                    {/* "UI Issues in" Label */}
+                    <div className="mb-1">
+                        <span className="text-lg font-medium text-gray-700 block">
+                            UI Issues in
+                        </span>
+                    </div>
 
-                    {/* Secondary Title Area (# Hashtag) */}
-                    <div className="flex items-center gap-2 mb-8 group">
-                        <span className="text-[#94A3B8] dark:text-white/20 text-[22px] font-bold flex-shrink-0">#</span>
-                        <textarea
-                            rows={1}
-                            className="flex-1 bg-transparent text-[22px] font-bold text-[#94A3B8] dark:text-white/30 outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/10 p-0 resize-none font-display overflow-hidden"
+                    {/* Hashtag Heading / Title */}
+                    <div className="mb-6 flex items-center border-b border-transparent focus-within:border-indigo-100 transition-colors">
+                        <span className="text-2xl font-bold text-gray-400 mr-2">#</span>
+                        <input
+                            type="text"
+                            className="flex-1 bg-transparent text-2xl font-bold text-gray-900 outline-none border-none focus:ring-0 p-0 placeholder-gray-300"
                             placeholder="Actualize Tags"
                             value={title}
-                            onChange={(e) => {
-                                setTitle(e.target.value);
-                                e.target.style.height = 'auto';
-                                e.target.style.height = e.target.scrollHeight + 'px';
-                            }}
+                            onChange={(e) => setTitle(e.target.value)}
                         />
                     </div>
+
+                    {/* Main Content */}
+                    <textarea
+                        className="w-full flex-1 bg-transparent text-base leading-relaxed text-gray-700 outline-none border-none focus:ring-0 placeholder-gray-400 p-0 resize-none min-h-[150px]"
+                        placeholder="Type something amazing..."
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                    />
+                </div>
+
+                {/* Resize Handle */}
+                <div
+                    onMouseDown={handleResizeStart}
+                    className="absolute bottom-0 right-0 w-8 h-8 cursor-se-resize flex items-end justify-end p-2"
+                >
+                    <div className="w-3 h-3 border-r-2 border-b-2 border-gray-300 hover:border-indigo-500 transition-colors"></div>
                 </div>
             </main>
-
-            {/* Corner Resize Handles */}
-            {!isFocusMode && (
-                <>
-                    <div onMouseDown={handleResizeDown('nw')} className="absolute top-0 left-0 w-8 h-8 cursor-nw-resize z-[60] group flex items-start justify-start p-1.5 opacity-0 hover:opacity-100 transition-opacity">
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-white/10"></div>
-                    </div>
-                    <div onMouseDown={handleResizeDown('ne')} className="absolute top-0 right-0 w-8 h-8 cursor-ne-resize z-[60] group flex items-start justify-end p-1.5 opacity-0 hover:opacity-100 transition-opacity">
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-white/10"></div>
-                    </div>
-                    <div onMouseDown={handleResizeDown('sw')} className="absolute bottom-0 left-0 w-8 h-8 cursor-sw-resize z-[60] group flex items-end justify-start p-1.5 opacity-0 hover:opacity-100 transition-opacity">
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-white/10"></div>
-                    </div>
-                    <div onMouseDown={handleResizeDown('se')} className="absolute bottom-0 right-0 w-10 h-10 cursor-se-resize z-[60] group flex items-end justify-end p-2 overflow-hidden">
-                        <div className="w-4 h-4 border-r-2 border-b-2 border-slate-200 dark:border-white/10 rounded-br-sm transition-colors group-hover:border-[#4F46E5]"></div>
-                    </div>
-                </>
-            )}
-
-            {showStatus && (
-                <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[10000] px-8 py-4 bg-slate-900 text-white rounded-2xl shadow-2xl font-bold animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    {showStatus}
-                </div>
-            )}
-
-            <FolderSelectionModal
-                isOpen={isFolderModalOpen}
-                onClose={() => setIsFolderModalOpen(false)}
-                initialSelectedFolderIds={selectedFolderIds}
-                onSave={setSelectedFolderIds}
-            />
-            <SettingsModal
-                isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                onDeleteAll={async () => {
-                    await chrome.storage.local.clear();
-                    setTitle(''); setContent('');
-                    displayStatus('All data deleted');
-                }}
-            />
         </div>
     );
 };
