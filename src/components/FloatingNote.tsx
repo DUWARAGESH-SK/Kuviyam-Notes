@@ -13,23 +13,20 @@ export const FloatingNote: React.FC<FloatingNoteProps> = ({ note, onUpdate, onSa
     const [position, setPosition] = useState(note.position || { x: 50, y: 50 });
     const [title, setTitle] = useState(note.title || '');
     const [content, setContent] = useState(note.content || '');
-    const [tagsInput, setTagsInput] = useState(note.tags ? note.tags.join(', ') : '');
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [isDark, setIsDark] = useState(false);
 
     const dragStart = useRef({ x: 0, y: 0 });
-    const wrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setPosition(note.position || { x: 50, y: 50 });
         setTitle(note.title || '');
         setContent(note.content || '');
-        setTagsInput(note.tags ? note.tags.join(', ') : '');
     }, [note]);
 
     const handleMouseDown = (e: React.MouseEvent) => {
-        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('textarea')) return;
+        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('textarea') || (e.target as HTMLElement).closest('input')) return;
         setIsDragging(true);
         setDragOffset({
             x: e.clientX - position.x,
@@ -55,12 +52,10 @@ export const FloatingNote: React.FC<FloatingNoteProps> = ({ note, onUpdate, onSa
     };
 
     const handleSave = async () => {
-        const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
         const updatedNote: Note = {
             ...note,
             title,
             content,
-            tags,
             position,
             updatedAt: Date.now()
         };
@@ -69,11 +64,6 @@ export const FloatingNote: React.FC<FloatingNoteProps> = ({ note, onUpdate, onSa
         } else {
             await storage.saveNote(updatedNote);
         }
-    };
-
-    const autoResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        e.target.style.height = 'auto';
-        e.target.style.height = e.target.scrollHeight + 'px';
     };
 
     const formattedDate = new Date().toLocaleDateString('en-GB', {
@@ -86,96 +76,85 @@ export const FloatingNote: React.FC<FloatingNoteProps> = ({ note, onUpdate, onSa
 
     return (
         <div
-            ref={wrapperRef}
             style={{
                 position: 'fixed',
                 left: position.x,
                 top: position.y,
+                width: '380px',
+                height: 'auto',
+                minHeight: '400px',
                 zIndex: 99999,
+                backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+                color: isDark ? 'white' : '#1e293b',
             }}
-            className={`font-display flex flex-col w-[380px] min-h-[400px] rounded-3xl shadow-2xl transition-colors duration-200 border ${isDark ? 'bg-[#0F1115] border-white/10 text-white' : 'bg-white border-slate-100 text-[#1E293B]'} overflow-hidden`}
+            className="flex flex-col rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 font-sans"
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
         >
-            {/* Header - Draggable Area */}
+            {/* SIMPLE HEADER - No icons */}
             <header
                 onMouseDown={handleMouseDown}
-                className="px-8 py-6 flex items-center justify-between cursor-move select-none border-b border-transparent bg-transparent"
+                className="px-6 py-4 flex items-center justify-between cursor-move border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 rounded-t-lg"
             >
+                <span className="text-lg font-bold text-gray-900 dark:text-white">EDIT NOTE</span>
                 <div className="flex items-center gap-2">
-                    <span className="text-[14px] font-extrabold text-[#94A3B8] tracking-wider whitespace-nowrap">EDIT NOTE</span>
-                </div>
-
-                <div className="flex items-center gap-3">
                     <button
                         onClick={() => setIsDark(!isDark)}
-                        className="w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-indigo-500 transition-colors rounded-full"
+                        className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 uppercase font-bold"
                     >
-                        <span className="material-symbols-rounded text-[20px]">{isDark ? 'light_mode' : 'dark_mode'}</span>
+                        {isDark ? 'Light' : 'Dark'}
                     </button>
                     <button
                         onClick={handleSave}
-                        className="bg-[#4F46E5] text-white px-6 py-2 rounded-full font-bold text-[14px] hover:bg-[#4338CA] active:scale-95 transition-all shadow-md"
+                        className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 transition-colors"
                     >
                         Save
                     </button>
                 </div>
             </header>
 
-            {/* Content */}
-            <main className="flex-1 flex flex-col px-8 pb-8 pt-2 overflow-y-auto custom-scrollbar">
-
+            {/* SIMPLE CONTENT - Matches Image 2 */}
+            <main className="flex-1 flex flex-col p-6 bg-white dark:bg-gray-900 rounded-b-lg">
                 {/* Date */}
                 <div className="mb-2">
-                    <span className="text-[#94A3B8] text-[11px] font-bold tracking-[0.15em] whitespace-nowrap uppercase">
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         {formattedDate}
                     </span>
                 </div>
 
-                {/* Linked Domain - Plain Text */}
-                <div className="mb-8 flex items-center gap-2 text-[#4F46E5] dark:text-indigo-400 font-bold text-[13px]">
-                    <span className="material-symbols-rounded text-[16px]">public</span>
-                    <span className="truncate">Linked to {domain}</span>
-                    <span className="material-symbols-rounded text-[14px] opacity-50">open_in_new</span>
+                {/* Linked Domain - Plain text */}
+                <div className="mb-4">
+                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                        Linked to {domain}
+                    </span>
                 </div>
 
-                {/* Title Input (Big) - "UI Issues in" */}
-                <textarea
-                    rows={1}
-                    className="w-full bg-transparent text-[36px] font-black text-[#1E293B] dark:text-white mb-2 outline-none border-none focus:ring-0 placeholder-slate-200 dark:placeholder-white/10 leading-[1.1] tracking-tight p-0 resize-none overflow-hidden"
-                    placeholder="UI Issues in"
-                    value={title}
-                    onChange={(e) => {
-                        setTitle(e.target.value);
-                        autoResize(e);
-                    }}
-                />
+                {/* "UI Issues in" Label - Fixed Text as per design requirement */}
+                <div className="mb-1">
+                    <p className="w-full text-lg font-medium text-gray-700 dark:text-gray-300">
+                        UI Issues in
+                    </p>
+                </div>
 
-                {/* Tags Input (Secondary) - "# Actualize Tags" */}
-                <div className="flex items-start gap-1 mb-8">
-                    <span className="text-[#94A3B8] text-[18px] font-bold mt-0.5">#</span>
-                    <textarea
-                        rows={1}
-                        className="flex-1 bg-transparent text-[18px] font-bold text-[#94A3B8] outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/10 p-0 resize-none overflow-hidden"
+                {/* Hashtag Heading / Title */}
+                <div className="mb-6 flex items-center">
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white mr-2">#</span>
+                    <input
+                        type="text"
+                        className="flex-1 bg-transparent text-2xl font-bold text-gray-900 dark:text-white outline-none border-none focus:ring-0 p-0 placeholder-gray-300"
                         placeholder="Actualize Tags"
-                        value={tagsInput}
-                        onChange={(e) => {
-                            setTagsInput(e.target.value);
-                            autoResize(e);
-                        }}
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
                     />
                 </div>
 
-                {/* Content Input (Body) */}
+                {/* Main Content */}
                 <textarea
-                    className="w-full flex-1 bg-transparent text-[16px] font-medium text-[#334155] dark:text-slate-300 outline-none border-none focus:ring-0 placeholder-slate-400 dark:placeholder-white/10 p-0 resize-none min-h-[100px]"
+                    className="w-full flex-1 bg-transparent text-gray-700 dark:text-gray-300 outline-none border-none focus:ring-0 placeholder-gray-400 dark:placeholder-gray-500 p-0 resize-none text-base min-h-[200px]"
                     placeholder="Type something amazing..."
                     value={content}
-                    onChange={(e) => {
-                        setContent(e.target.value);
-                        autoResize(e);
-                    }}
+                    onChange={(e) => setContent(e.target.value)}
                 />
             </main>
         </div>
