@@ -22,9 +22,8 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
 
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
-    const [tagsInput, setTagsInput] = useState('');
     const [isFocusMode, setIsFocusMode] = useState(false);
-    const [isDark, setIsDark] = useState(false); // Default light
+    const [isDark, setIsDark] = useState(false); // Default to light as per image
     const [isPinned, setIsPinned] = useState(false);
     const [showStatus, setShowStatus] = useState<string | null>(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
@@ -47,7 +46,6 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                 if (draft) {
                     setTitle(draft.title || '');
                     setContent(draft.content || '');
-                    setTagsInput(draft.tags ? draft.tags.join(', ') : '');
                     setIsPinned(draft.pinned || false);
                     setSelectedFolderIds(draft.folderIds || []);
                 }
@@ -62,7 +60,6 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                 if (draft) {
                     setTitle(draft.title || '');
                     setContent(draft.content || '');
-                    setTagsInput(draft.tags ? draft.tags.join(', ') : '');
                     setIsPinned(draft.pinned || false);
                     setSelectedFolderIds(draft.folderIds || []);
                 }
@@ -80,13 +77,13 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
         const draft = {
             title,
             content,
-            tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+            tags: [], // Using title for hashtag logic now
             pinned: isPinned,
             folderIds: selectedFolderIds,
             updatedAt: Date.now()
         };
         chrome.storage.local.set({ panelDraft: draft });
-    }, [title, content, tagsInput, isPinned, selectedFolderIds]);
+    }, [title, content, isPinned, selectedFolderIds]);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -103,10 +100,10 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                 const dx = e.clientX - resizeStart.current.x;
                 const dy = e.clientY - resizeStart.current.y;
 
-                if (resizeDir.includes('e')) newW = Math.max(300, resizeStart.current.w + dx);
+                if (resizeDir.includes('e')) newW = Math.max(380, resizeStart.current.w + dx);
                 if (resizeDir.includes('w')) {
                     const potentialW = resizeStart.current.w - dx;
-                    if (potentialW > 300) {
+                    if (potentialW > 380) {
                         newW = potentialW;
                         newX = resizeStart.current.lx + dx;
                     }
@@ -161,7 +158,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
         const draft: NoteDraft = {
             title: title || 'Untitled',
             content,
-            tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+            tags: [],
             pinned: isPinned,
             domain: window.location.hostname,
             url: window.location.href,
@@ -177,7 +174,12 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
         setTimeout(() => setShowStatus(null), 2000);
     };
 
-    const formattedDate = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
+    const formattedDate = new Date().toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+    }).toUpperCase().replace(/(\d+)/, '$1,'); // Simple hack for "MONDAY, 9 FEBRUARY"
+
     const domain = window.location.hostname || 'chat.deepseek.com';
 
     return (
@@ -205,28 +207,28 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
             {/* Header */}
             <header
                 onMouseDown={handleDragDown}
-                className="px-8 py-6 flex items-center justify-between cursor-move select-none border-b border-slate-50 dark:border-white/5"
+                className="px-8 py-6 flex items-center justify-between cursor-move select-none border-b border-slate-50 dark:border-white/5 bg-white/50 dark:bg-black/20 backdrop-blur-xl z-20"
             >
                 <div className="flex items-center gap-6 flex-shrink-0">
                     <button
                         onClick={onClose}
-                        className="w-11 h-11 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex-shrink-0"
+                        className="w-11 h-11 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex-shrink-0 shadow-sm"
                     >
-                        <span className="material-symbols-rounded text-slate-400 text-[24px] flex-shrink-0">chevron_left</span>
+                        <span className="material-symbols-rounded text-slate-500 text-[24px] flex-shrink-0">chevron_left</span>
                     </button>
                     <span className="text-[18px] font-extrabold text-[#94A3B8] dark:text-white/40 tracking-wider whitespace-nowrap">EDIT NOTE</span>
                 </div>
 
                 <div className="flex items-center gap-4 flex-shrink-0" onMouseDown={e => e.stopPropagation()}>
-                    <button onClick={() => setIsDark(!isDark)} className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-indigo-600 dark:hover:text-white transition-colors cursor-pointer flex-shrink-0">
+                    <button onClick={() => setIsDark(!isDark)} className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] dark:hover:text-white transition-colors cursor-pointer flex-shrink-0">
                         <span className="material-symbols-rounded text-[24px] flex-shrink-0">{isDark ? 'dark_mode' : 'light_mode'}</span>
                     </button>
-                    <button onClick={() => setIsFocusMode(!isFocusMode)} className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-indigo-600 dark:hover:text-white transition-colors cursor-pointer flex-shrink-0">
+                    <button onClick={() => setIsFocusMode(!isFocusMode)} className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] dark:hover:text-white transition-colors cursor-pointer flex-shrink-0">
                         <span className="material-symbols-rounded text-[24px] flex-shrink-0">{isFocusMode ? 'close_fullscreen' : 'expand_content'}</span>
                     </button>
                     <button
                         onClick={handleSave}
-                        className="bg-[#4F46E5] text-white px-9 py-3 rounded-full font-bold text-[16px] hover:bg-indigo-700 active:scale-95 transition-all shadow-[0_10px_30px_-5px_rgba(79,70,229,0.4)] ml-2 flex-shrink-0"
+                        className="bg-[#4F46E5] text-white px-9 py-2.5 rounded-full font-bold text-[16px] hover:bg-[#4338CA] active:scale-95 transition-all shadow-[0_10px_25px_-5px_rgba(79,70,229,0.4)] ml-2 flex-shrink-0"
                     >
                         Save
                     </button>
@@ -234,15 +236,15 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
             </header>
 
             {/* Main Content Area */}
-            <main className="flex-1 flex flex-col overflow-hidden">
+            <main className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#0F1115]">
                 <div className={`flex-1 overflow-y-auto px-10 pt-10 pb-32 custom-scrollbar ${isFocusMode ? 'max-w-4xl mx-auto w-full' : ''}`}>
 
-                    {/* Meta Row: Date and Action Pill */}
+                    {/* Date and Action Pill */}
                     <div className="flex items-center justify-between mb-10">
-                        <span className="text-[#94A3B8] dark:text-white/30 text-[14px] font-bold tracking-widest whitespace-nowrap">{formattedDate}</span>
+                        <span className="text-[#94A3B8] dark:text-white/30 text-[14px] font-bold tracking-[0.1em] whitespace-nowrap">{formattedDate}</span>
 
-                        <div className="flex items-center gap-1 bg-slate-50 dark:bg-white/5 p-1.5 rounded-full border border-slate-100 dark:border-white/5 flex-shrink-0">
-                            <button onClick={() => setIsPinned(!isPinned)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${isPinned ? 'text-rose-500' : 'text-[#94A3B8] hover:text-slate-600 dark:hover:text-white'}`}>
+                        <div className="flex items-center gap-1 bg-[#F8FAFC] dark:bg-white/5 p-1.5 rounded-full border border-slate-100 dark:border-white/5 flex-shrink-0">
+                            <button onClick={() => setIsPinned(!isPinned)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${isPinned ? 'text-[#4F46E5]' : 'text-[#94A3B8] hover:text-slate-600 dark:hover:text-white'}`}>
                                 <span className={`material-symbols-rounded text-[22px] flex-shrink-0 ${isPinned ? 'fill-current' : ''}`}>favorite</span>
                             </button>
                             <div className="w-[1px] h-4 bg-slate-200 dark:bg-white/10 mx-1 flex-shrink-0"></div>
@@ -255,7 +257,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                         </div>
                     </div>
 
-                    {/* Linked Badge Pill */}
+                    {/* Linked Domain Pill */}
                     <div className="mb-12">
                         <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-[#EEF2FF] dark:bg-indigo-500/5 border border-[#E0E7FF] dark:border-indigo-500/10 rounded-2xl text-[#4F46E5] dark:text-indigo-400 font-bold text-[14px] flex-shrink-0">
                             <span className="material-symbols-rounded text-[20px] flex-shrink-0">language</span>
@@ -264,10 +266,9 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                         </div>
                     </div>
 
-                    {/* Content Area (Large font) */}
+                    {/* Primary Content Editor */}
                     <textarea
-                        ref={textareaRef}
-                        className="w-full bg-transparent text-[58px] font-black text-[#1E293B] dark:text-white mb-4 outline-none border-none focus:ring-0 placeholder-slate-200 dark:placeholder-white/5 leading-[1.05] tracking-tighter p-0 resize-none font-display overflow-hidden"
+                        className="w-full bg-transparent text-[52px] font-black text-[#1E293B] dark:text-white mb-2 outline-none border-none focus:ring-0 placeholder-slate-200 dark:placeholder-white/5 leading-[1.1] tracking-tighter p-0 resize-none font-display overflow-hidden"
                         placeholder="Type something amazing..."
                         value={content}
                         onChange={(e) => {
@@ -277,12 +278,12 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                         }}
                     />
 
-                    {/* Secondary Reference Area (# Tags) */}
-                    <div className="flex items-start gap-3 mb-8 group">
-                        <span className="material-symbols-rounded text-slate-300 dark:text-white/20 text-[22px] mt-1 flex-shrink-0">tag</span>
+                    {/* Secondary Title Area (# Hashtag) */}
+                    <div className="flex items-center gap-2 mb-8 group">
+                        <span className="text-[#94A3B8] dark:text-white/20 text-[22px] font-bold flex-shrink-0">#</span>
                         <textarea
                             rows={1}
-                            className="flex-1 bg-transparent text-[20px] font-bold text-[#94A3B8] dark:text-white/30 outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/10 p-0 resize-none font-display overflow-hidden"
+                            className="flex-1 bg-transparent text-[22px] font-bold text-[#94A3B8] dark:text-white/30 outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/10 p-0 resize-none font-display overflow-hidden"
                             placeholder="Actualize Tags"
                             value={title}
                             onChange={(e) => {
@@ -295,24 +296,20 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                 </div>
             </main>
 
-            {/* Resize Handles (Small Triangles/Dots) */}
+            {/* Corner Resize Handles */}
             {!isFocusMode && (
                 <>
-                    {/* NW Handle */}
-                    <div onMouseDown={handleResizeDown('nw')} className="absolute top-0 left-0 w-8 h-8 cursor-nw-resize z-[60] group flex items-start justify-start p-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div onMouseDown={handleResizeDown('nw')} className="absolute top-0 left-0 w-8 h-8 cursor-nw-resize z-[60] group flex items-start justify-start p-1.5 opacity-0 hover:opacity-100 transition-opacity">
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-white/10"></div>
                     </div>
-                    {/* NE Handle */}
-                    <div onMouseDown={handleResizeDown('ne')} className="absolute top-0 right-0 w-8 h-8 cursor-ne-resize z-[60] group flex items-start justify-end p-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div onMouseDown={handleResizeDown('ne')} className="absolute top-0 right-0 w-8 h-8 cursor-ne-resize z-[60] group flex items-start justify-end p-1.5 opacity-0 hover:opacity-100 transition-opacity">
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-white/10"></div>
                     </div>
-                    {/* SW Handle */}
-                    <div onMouseDown={handleResizeDown('sw')} className="absolute bottom-0 left-0 w-8 h-8 cursor-sw-resize z-[60] group flex items-end justify-start p-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div onMouseDown={handleResizeDown('sw')} className="absolute bottom-0 left-0 w-8 h-8 cursor-sw-resize z-[60] group flex items-end justify-start p-1.5 opacity-0 hover:opacity-100 transition-opacity">
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-white/10"></div>
                     </div>
-                    {/* SE Handle (Visible Triangle) */}
                     <div onMouseDown={handleResizeDown('se')} className="absolute bottom-0 right-0 w-10 h-10 cursor-se-resize z-[60] group flex items-end justify-end p-2 overflow-hidden">
-                        <div className="w-4 h-4 border-r-2 border-b-2 border-slate-200 dark:border-white/10 rounded-br-sm transition-colors group-hover:border-indigo-500"></div>
+                        <div className="w-4 h-4 border-r-2 border-b-2 border-slate-200 dark:border-white/10 rounded-br-sm transition-colors group-hover:border-[#4F46E5]"></div>
                     </div>
                 </>
             )}
