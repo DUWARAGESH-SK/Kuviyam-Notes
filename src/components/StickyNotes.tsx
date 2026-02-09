@@ -7,6 +7,7 @@ interface StickyNotesProps {
 }
 
 const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
+    // --- STATE ---
     const [layout, setLayout] = useState({
         x: 50,
         y: 50,
@@ -16,7 +17,6 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
         isOpen: true
     });
 
-    // Position and size state
     const [position, setPosition] = useState({ x: 50, y: 50 });
     const [size, setSize] = useState({ width: 380, height: 500 });
 
@@ -29,9 +29,13 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
     const [content, setContent] = useState('');
     const [isSaved, setIsSaved] = useState(true);
 
+    // Hover states for interactions
+    const [saveHover, setSaveHover] = useState(false);
+    const [closeHover, setCloseHover] = useState(false);
+
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Sync with storage layout
+    // --- EFFECTS ---
     useEffect(() => {
         storage.getPanelLayout().then((l) => {
             if (l) {
@@ -41,7 +45,6 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
             }
         });
 
-        // Load draft
         chrome.storage.local.get(['panelDraft']).then((res) => {
             const draft = res.panelDraft as any;
             if (draft) {
@@ -51,20 +54,22 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
         });
     }, []);
 
-    // Format date like "MONDAY, 9 FEBRUARY"
+    // Format date
     const formattedDate = new Date().toLocaleDateString('en-GB', {
         weekday: 'long',
         day: 'numeric',
         month: 'long'
     }).toUpperCase().replace(/(\d+)/, '$1,');
 
+    const domain = window.location.hostname || 'chat.deepseek.com';
+
+    // --- HANDLERS ---
     const handleDragStart = (e: React.MouseEvent) => {
         if ((e.target as HTMLElement).closest('button') ||
             (e.target as HTMLElement).closest('textarea') ||
             (e.target as HTMLElement).closest('input')) {
             return;
         }
-
         setIsDragging(true);
         setDragOffset({
             x: e.clientX - position.x,
@@ -88,16 +93,13 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
             if (isDragging && !isResizing) {
                 const newX = e.clientX - dragOffset.x;
                 const newY = Math.max(0, e.clientY - dragOffset.y);
-
                 setPosition({ x: newX, y: newY });
             } else if (isResizing) {
                 const deltaX = e.clientX - resizeStart.x;
                 const deltaY = e.clientY - resizeStart.y;
-
-                const newWidth = Math.max(300, resizeStart.width + deltaX);
-                const newHeight = Math.max(300, resizeStart.height + deltaY);
-
-                setSize({ width: newWidth, height: newHeight });
+                const newW = Math.max(300, resizeStart.width + deltaX);
+                const newH = Math.max(300, resizeStart.height + deltaY);
+                setSize({ width: newW, height: newHeight });
             }
         };
 
@@ -123,11 +125,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
     }, [isDragging, isResizing, dragOffset, resizeStart, position, size, layout]);
 
     const handleSave = async () => {
-        const noteDraft = {
-            title,
-            content,
-            updatedAt: Date.now()
-        };
+        const noteDraft = { title, content, updatedAt: Date.now() };
         chrome.storage.local.set({ panelDraft: noteDraft });
 
         const newNote = {
@@ -141,120 +139,245 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
             folderIds: []
         };
         await storage.createNote(newNote);
-
         setIsSaved(true);
         setTitle('');
         setContent('');
     };
 
-    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setTitle(e.target.value);
-        setIsSaved(false);
+    // --- STYLES (Inline to guarantee rendering) ---
+    const styles = {
+        container: {
+            position: 'fixed' as const,
+            left: position.x,
+            top: position.y,
+            width: size.width,
+            height: size.height,
+            minHeight: '400px',
+            zIndex: 2147483647,
+            backgroundColor: '#ffffff',
+            color: '#1e293b',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            borderRadius: '12px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0,0,0,0.05)',
+            display: 'flex',
+            flexDirection: 'column' as const,
+        },
+        header: {
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #f3f4f6',
+            backgroundColor: '#f9fafb',
+            borderTopLeftRadius: '12px',
+            borderTopRightRadius: '12px',
+            cursor: 'move',
+            userSelect: 'none' as const,
+        },
+        headerTitle: {
+            fontSize: '18px',
+            fontWeight: '700',
+            color: '#111827',
+            letterSpacing: '0.025em',
+        },
+        actions: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+        },
+        unsaved: {
+            fontSize: '12px',
+            fontWeight: '500',
+            color: '#9ca3af',
+            marginRight: '8px',
+            animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        },
+        saveBtn: {
+            padding: '8px 20px',
+            backgroundColor: saveHover ? '#4338ca' : '#4f46e5', // Darker on hover
+            color: 'white',
+            fontSize: '14px',
+            fontWeight: '700',
+            borderRadius: '9999px',
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+            transition: 'background-color 0.15s ease',
+        },
+        closeBtn: {
+            marginLeft: '8px',
+            color: closeHover ? '#4b5563' : '#9ca3af',
+            fontWeight: 'bold',
+            padding: '4px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '18px',
+            lineHeight: '1',
+        },
+        main: {
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column' as const,
+            padding: '24px',
+            overflow: 'hidden',
+            backgroundColor: 'white',
+            borderBottomLeftRadius: '12px',
+            borderBottomRightRadius: '12px',
+            position: 'relative' as const,
+        },
+        contentScroll: {
+            flex: 1,
+            overflowY: 'auto' as const,
+            display: 'flex',
+            flexDirection: 'column' as const,
+        },
+        date: {
+            fontSize: '12px',
+            fontWeight: '700',
+            color: '#6b7280',
+            textTransform: 'uppercase' as const,
+            letterSpacing: '0.1em',
+            marginBottom: '8px',
+        },
+        domain: {
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#4f46e5',
+            marginBottom: '24px',
+        },
+        label: {
+            fontSize: '18px',
+            fontWeight: '500',
+            color: '#374151',
+            marginBottom: '4px',
+            display: 'block',
+        },
+        titleContainer: {
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            borderBottom: '1px solid transparent',
+        },
+        hashtag: {
+            fontSize: '24px',
+            fontWeight: '700',
+            color: '#9ca3af',
+            marginRight: '8px',
+        },
+        titleInput: {
+            flex: 1,
+            backgroundColor: 'transparent',
+            fontSize: '24px',
+            fontWeight: '700',
+            color: '#111827',
+            outline: 'none',
+            border: 'none',
+            padding: 0,
+            width: '100%',
+        },
+        textarea: {
+            width: '100%',
+            flex: 1,
+            backgroundColor: 'transparent',
+            fontSize: '16px',
+            lineHeight: '1.6',
+            color: '#374151',
+            outline: 'none',
+            border: 'none',
+            padding: 0,
+            resize: 'none' as const,
+            minHeight: '150px',
+            fontFamily: 'inherit',
+        },
+        resizeHandle: {
+            position: 'absolute' as const,
+            bottom: 0,
+            right: 0,
+            width: '32px',
+            height: '32px',
+            cursor: 'se-resize',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'flex-end',
+            padding: '8px',
+        },
+        resizeIcon: {
+            width: '10px',
+            height: '10px',
+            borderRight: '2px solid #d1d5db',
+            borderBottom: '2px solid #d1d5db',
+        }
     };
-
-    const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setContent(e.target.value);
-        setIsSaved(false);
-    };
-
-    const domain = window.location.hostname || 'chat.deepseek.com';
 
     return (
-        <div
-            ref={containerRef}
-            style={{
-                position: 'fixed',
-                left: position.x,
-                top: position.y,
-                width: size.width,
-                height: size.height,
-                minHeight: '400px',
-                zIndex: 2147483647,
-                backgroundColor: '#ffffff',
-                color: '#1e293b',
-                // EXPLICIT SYSTEM FONT STACK TO FIX GARBLED TEXT
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-            }}
-            className="flex flex-col rounded-xl shadow-2xl border border-gray-200 font-sans select-none"
-        >
-            {/* HEADER */}
-            <header
-                onMouseDown={handleDragStart}
-                className="px-6 py-4 flex items-center justify-between cursor-move border-b border-gray-100 bg-gray-50 rounded-t-xl"
-            >
-                <div className="flex items-center">
-                    <span className="text-lg font-bold text-gray-900 tracking-wide">EDIT NOTE</span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    {!isSaved && (
-                        <span className="text-xs text-gray-400 font-medium animate-pulse">Unsaved</span>
-                    )}
+        <div ref={containerRef} style={styles.container}>
+            {/* Header */}
+            <header style={styles.header} onMouseDown={handleDragStart}>
+                <div style={styles.headerTitle}>EDIT NOTE</div>
+                <div style={styles.actions}>
+                    {!isSaved && <span style={styles.unsaved}>Unsaved</span>}
                     <button
                         onClick={handleSave}
-                        className="px-5 py-2 bg-indigo-600 text-white text-sm font-bold rounded-full hover:bg-indigo-700 transition-colors shadow-sm"
+                        style={styles.saveBtn}
+                        onMouseEnter={() => setSaveHover(true)}
+                        onMouseLeave={() => setSaveHover(false)}
                     >
                         Save
                     </button>
-                    <button onClick={onClose} className="ml-2 text-gray-400 hover:text-gray-600 font-bold px-2">
+                    <button
+                        onClick={onClose}
+                        style={styles.closeBtn}
+                        onMouseEnter={() => setCloseHover(true)}
+                        onMouseLeave={() => setCloseHover(false)}
+                    >
                         ✕
                     </button>
                 </div>
             </header>
 
-            {/* MAIN CONTENT */}
-            <main className="flex-1 flex flex-col p-6 overflow-hidden bg-white rounded-b-xl relative">
-                <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+            {/* Main Content */}
+            <main style={styles.main}>
+                <div style={styles.contentScroll} className="custom-scrollbar">
                     {/* Date */}
-                    <div className="mb-2">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            {formattedDate}
-                        </span>
+                    <div style={styles.date}>{formattedDate}</div>
+
+                    {/* Domain */}
+                    <div style={styles.domain}>Linked to {domain}</div>
+
+                    {/* Label */}
+                    <div style={styles.label}>UI Issues in</div>
+
+                    {/* Title */}
+                    <div style={styles.titleContainer}>
+                        <span style={styles.hashtag}>#</span>
+                        <input
+                            type="text"
+                            style={styles.titleInput}
+                            placeholder="Actualize Tags"
+                            value={title}
+                            onChange={(e) => {
+                                setTitle(e.target.value);
+                                setIsSaved(false);
+                            }}
+                        />
                     </div>
 
-                    {/* Linked Domain */}
-                    <div className="mb-6">
-                        <span className="text-sm font-medium text-indigo-600">
-                            Linked to {domain}
-                        </span>
-                    </div>
-
-                    {/* "UI Issues in" Label */}
-                    <div className="mb-1">
-                        <span className="text-lg font-medium text-gray-700 block">
-                            UI Issues in
-                        </span>
-                    </div>
-
-                    {/* Title Input */}
-                    <div className="mb-6 flex items-center border-b border-transparent focus-within:border-indigo-50 transition-colors">
-                        <div className="flex items-center w-full">
-                            <span className="text-2xl font-bold text-gray-400 mr-2">#</span>
-                            <input
-                                type="text"
-                                className="flex-1 bg-transparent text-2xl font-bold text-gray-900 outline-none border-none focus:ring-0 p-0 placeholder-gray-300"
-                                placeholder="Actualize Tags"
-                                value={title}
-                                onChange={handleTitleChange}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Content Textarea */}
+                    {/* Textarea */}
                     <textarea
-                        className="w-full flex-1 bg-transparent text-base leading-relaxed text-gray-700 outline-none border-none focus:ring-0 placeholder-gray-400 p-0 resize-none min-h-[150px]"
+                        style={styles.textarea}
                         placeholder="Type something amazing..."
                         value={content}
-                        onChange={handleContentChange}
+                        onChange={(e) => {
+                            setContent(e.target.value);
+                            setIsSaved(false);
+                        }}
                     />
                 </div>
 
                 {/* Resize Handle */}
-                <div
-                    onMouseDown={handleResizeStart}
-                    className="absolute bottom-0 right-0 w-8 h-8 cursor-se-resize flex items-end justify-end p-2"
-                >
-                    <div className="w-3 h-3 border-r-2 border-b-2 border-gray-300 hover:border-indigo-500 transition-colors"></div>
+                <div style={styles.resizeHandle} onMouseDown={handleResizeStart}>
+                    <div style={styles.resizeIcon}></div>
                 </div>
             </main>
         </div>
