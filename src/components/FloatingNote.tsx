@@ -13,16 +13,19 @@ export const FloatingNote: React.FC<FloatingNoteProps> = ({ note, onUpdate, onSa
     const [position, setPosition] = useState(note.position || { x: 50, y: 50 });
     const [title, setTitle] = useState(note.title || '');
     const [content, setContent] = useState(note.content || '');
+    const [tagsInput, setTagsInput] = useState(note.tags ? note.tags.join(', ') : '');
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const [isDark, setIsDark] = useState(false); // Can be prop or storage
+    const [isDark, setIsDark] = useState(false);
 
     const dragStart = useRef({ x: 0, y: 0 });
+    const wrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setPosition(note.position || { x: 50, y: 50 });
         setTitle(note.title || '');
         setContent(note.content || '');
+        setTagsInput(note.tags ? note.tags.join(', ') : '');
     }, [note]);
 
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -52,10 +55,12 @@ export const FloatingNote: React.FC<FloatingNoteProps> = ({ note, onUpdate, onSa
     };
 
     const handleSave = async () => {
+        const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
         const updatedNote: Note = {
             ...note,
             title,
             content,
+            tags,
             position,
             updatedAt: Date.now()
         };
@@ -66,7 +71,11 @@ export const FloatingNote: React.FC<FloatingNoteProps> = ({ note, onUpdate, onSa
         }
     };
 
-    // Date formatting matching StickyNotes
+    const autoResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        e.target.style.height = 'auto';
+        e.target.style.height = e.target.scrollHeight + 'px';
+    };
+
     const formattedDate = new Date().toLocaleDateString('en-GB', {
         weekday: 'long',
         day: 'numeric',
@@ -77,92 +86,97 @@ export const FloatingNote: React.FC<FloatingNoteProps> = ({ note, onUpdate, onSa
 
     return (
         <div
+            ref={wrapperRef}
             style={{
                 position: 'fixed',
                 left: position.x,
                 top: position.y,
-                width: '380px', // Matches min-width of StickyNotes
-                height: 'auto',
-                minHeight: '400px',
                 zIndex: 99999,
-                backgroundColor: isDark ? '#0F1115' : '#ffffff',
-                color: isDark ? 'white' : '#1e293b',
             }}
-            className={`font-display flex flex-col rounded-[32px] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.2)] border ${isDark ? 'border-white/10' : 'border-black/5'}`}
+            className={`font-display flex flex-col w-[380px] min-h-[400px] rounded-3xl shadow-2xl transition-colors duration-200 border ${isDark ? 'bg-[#0F1115] border-white/10 text-white' : 'bg-white border-slate-100 text-[#1E293B]'} overflow-hidden`}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
         >
-            {/* Header */}
+            {/* Header - Draggable Area */}
             <header
                 onMouseDown={handleMouseDown}
-                className="px-8 py-6 flex items-center justify-between cursor-move select-none border-b border-slate-50 dark:border-white/5 bg-white/50 dark:bg-black/20 backdrop-blur-xl rounded-t-[32px]"
+                className="px-8 py-6 flex items-center justify-between cursor-move select-none border-b border-transparent bg-transparent"
             >
-                <div className="flex items-center gap-6 flex-shrink-0">
-                    <div className="w-11 h-11 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center shadow-sm pointer-events-none">
-                        <span className="material-symbols-rounded text-slate-500 text-[24px]">drag_indicator</span>
-                    </div>
-                    <span className="text-[18px] font-extrabold text-[#94A3B8] dark:text-white/40 tracking-wider whitespace-nowrap">NOTE</span>
+                <div className="flex items-center gap-2">
+                    <span className="text-[14px] font-extrabold text-[#94A3B8] tracking-wider whitespace-nowrap">EDIT NOTE</span>
                 </div>
 
-                <div className="flex items-center gap-3 flex-shrink-0">
-                    <button onClick={() => setIsDark(!isDark)} className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] dark:hover:text-white transition-colors cursor-pointer">
-                        <span className="material-symbols-rounded text-[24px]">{isDark ? 'dark_mode' : 'light_mode'}</span>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsDark(!isDark)}
+                        className="w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-indigo-500 transition-colors rounded-full"
+                    >
+                        <span className="material-symbols-rounded text-[20px]">{isDark ? 'light_mode' : 'dark_mode'}</span>
                     </button>
-                    <button onClick={handleSave} className="bg-[#4F46E5] text-white px-6 py-2 rounded-full font-bold text-[14px] hover:bg-[#4338CA] active:scale-95 transition-all shadow-[0_10px_25px_-5px_rgba(79,70,229,0.4)]">
+                    <button
+                        onClick={handleSave}
+                        className="bg-[#4F46E5] text-white px-6 py-2 rounded-full font-bold text-[14px] hover:bg-[#4338CA] active:scale-95 transition-all shadow-md"
+                    >
                         Save
                     </button>
-                    {onDelete && (
-                        <button onClick={() => onDelete(note.id)} className="w-10 h-10 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-full transition-colors cursor-pointer">
-                            <span className="material-symbols-rounded text-[24px]">delete</span>
-                        </button>
-                    )}
                 </div>
             </header>
 
-            {/* Main Content Area */}
-            <main className="flex-1 flex flex-col overflow-hidden p-8 pt-6">
+            {/* Content */}
+            <main className="flex-1 flex flex-col px-8 pb-8 pt-2 overflow-y-auto custom-scrollbar">
 
-                {/* Date and Action Pill */}
-                <div className="flex items-center justify-between mb-8">
-                    <span className="text-[#94A3B8] dark:text-white/30 text-[14px] font-bold tracking-[0.1em] whitespace-nowrap">{formattedDate}</span>
+                {/* Date */}
+                <div className="mb-2">
+                    <span className="text-[#94A3B8] text-[11px] font-bold tracking-[0.15em] whitespace-nowrap uppercase">
+                        {formattedDate}
+                    </span>
                 </div>
 
-                {/* Linked Domain Pill */}
-                <div className="mb-8">
-                    <div className="inline-flex items-center gap-3 px-4 py-2 bg-[#EEF2FF] dark:bg-indigo-500/5 border border-[#E0E7FF] dark:border-indigo-500/10 rounded-xl text-[#4F46E5] dark:text-indigo-400 font-bold text-[13px] flex-shrink-0">
-                        <span className="material-symbols-rounded text-[18px]">language</span>
-                        <span className="whitespace-nowrap truncate max-w-[150px]">{domain}</span>
-                    </div>
+                {/* Linked Domain - Plain Text */}
+                <div className="mb-8 flex items-center gap-2 text-[#4F46E5] dark:text-indigo-400 font-bold text-[13px]">
+                    <span className="material-symbols-rounded text-[16px]">public</span>
+                    <span className="truncate">Linked to {domain}</span>
+                    <span className="material-symbols-rounded text-[14px] opacity-50">open_in_new</span>
                 </div>
 
-                {/* Primary Content Editor */}
+                {/* Title Input (Big) - "UI Issues in" */}
                 <textarea
-                    className="w-full bg-transparent text-[36px] font-black text-[#1E293B] dark:text-white mb-4 outline-none border-none focus:ring-0 placeholder-slate-200 dark:placeholder-white/5 leading-[1.1] tracking-tighter p-0 resize-none font-display overflow-hidden min-h-[100px]"
-                    placeholder="Type something..."
-                    value={content}
+                    rows={1}
+                    className="w-full bg-transparent text-[36px] font-black text-[#1E293B] dark:text-white mb-2 outline-none border-none focus:ring-0 placeholder-slate-200 dark:placeholder-white/10 leading-[1.1] tracking-tight p-0 resize-none overflow-hidden"
+                    placeholder="UI Issues in"
+                    value={title}
                     onChange={(e) => {
-                        setContent(e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = e.target.scrollHeight + 'px';
+                        setTitle(e.target.value);
+                        autoResize(e);
                     }}
                 />
 
-                {/* Secondary Title Area (# Hashtag) */}
-                <div className="flex items-center gap-2 mt-auto group pt-4 border-t border-slate-50 dark:border-white/5">
-                    <span className="text-[#94A3B8] dark:text-white/20 text-[18px] font-bold flex-shrink-0">#</span>
+                {/* Tags Input (Secondary) - "# Actualize Tags" */}
+                <div className="flex items-start gap-1 mb-8">
+                    <span className="text-[#94A3B8] text-[18px] font-bold mt-0.5">#</span>
                     <textarea
                         rows={1}
-                        className="flex-1 bg-transparent text-[18px] font-bold text-[#94A3B8] dark:text-white/30 outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/10 p-0 resize-none font-display overflow-hidden"
-                        placeholder="Tags"
-                        value={title}
+                        className="flex-1 bg-transparent text-[18px] font-bold text-[#94A3B8] outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/10 p-0 resize-none overflow-hidden"
+                        placeholder="Actualize Tags"
+                        value={tagsInput}
                         onChange={(e) => {
-                            setTitle(e.target.value);
-                            e.target.style.height = 'auto';
-                            e.target.style.height = e.target.scrollHeight + 'px';
+                            setTagsInput(e.target.value);
+                            autoResize(e);
                         }}
                     />
                 </div>
+
+                {/* Content Input (Body) */}
+                <textarea
+                    className="w-full flex-1 bg-transparent text-[16px] font-medium text-[#334155] dark:text-slate-300 outline-none border-none focus:ring-0 placeholder-slate-400 dark:placeholder-white/10 p-0 resize-none min-h-[100px]"
+                    placeholder="Type something amazing..."
+                    value={content}
+                    onChange={(e) => {
+                        setContent(e.target.value);
+                        autoResize(e);
+                    }}
+                />
             </main>
         </div>
     );
