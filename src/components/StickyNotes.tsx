@@ -24,7 +24,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
     const [content, setContent] = useState('');
     const [tagsInput, setTagsInput] = useState('');
     const [isFocusMode, setIsFocusMode] = useState(false);
-    const [isDark, setIsDark] = useState(false); // Match light mode in image
+    const [isDark, setIsDark] = useState(false); // Default light
     const [isPinned, setIsPinned] = useState(false);
     const [showStatus, setShowStatus] = useState<string | null>(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
@@ -233,38 +233,38 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                 </div>
             </header>
 
-            {/* Main Scroll Content */}
+            {/* Main Content Area */}
             <main className="flex-1 flex flex-col overflow-hidden">
                 <div className={`flex-1 overflow-y-auto px-10 pt-10 pb-32 custom-scrollbar ${isFocusMode ? 'max-w-4xl mx-auto w-full' : ''}`}>
 
                     {/* Meta Row: Date and Action Pill */}
                     <div className="flex items-center justify-between mb-10">
-                        <span className="text-[#94A3B8] dark:text-white/30 text-[14px] font-bold tracking-widest">{formattedDate}</span>
+                        <span className="text-[#94A3B8] dark:text-white/30 text-[14px] font-bold tracking-widest whitespace-nowrap">{formattedDate}</span>
 
-                        <div className="flex items-center gap-1 bg-slate-50 dark:bg-white/5 p-1.5 rounded-full border border-slate-100 dark:border-white/5">
-                            <button onClick={() => setIsPinned(!isPinned)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${isPinned ? 'text-rose-500' : 'text-[#94A3B8] hover:text-slate-600 dark:hover:text-white'}`}>
-                                <span className={`material-symbols-rounded text-[22px] ${isPinned ? 'fill-current' : ''}`}>favorite</span>
+                        <div className="flex items-center gap-1 bg-slate-50 dark:bg-white/5 p-1.5 rounded-full border border-slate-100 dark:border-white/5 flex-shrink-0">
+                            <button onClick={() => setIsPinned(!isPinned)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${isPinned ? 'text-rose-500' : 'text-[#94A3B8] hover:text-slate-600 dark:hover:text-white'}`}>
+                                <span className={`material-symbols-rounded text-[22px] flex-shrink-0 ${isPinned ? 'fill-current' : ''}`}>favorite</span>
                             </button>
-                            <div className="w-[1px] h-4 bg-slate-200 dark:bg-white/10 mx-1"></div>
-                            <button onClick={() => setIsFolderModalOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-full text-[#94A3B8] hover:text-slate-600 dark:hover:text-white transition-colors">
-                                <span className="material-symbols-rounded text-[22px]">create_new_folder</span>
+                            <div className="w-[1px] h-4 bg-slate-200 dark:bg-white/10 mx-1 flex-shrink-0"></div>
+                            <button onClick={() => setIsFolderModalOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-full text-[#94A3B8] hover:text-slate-600 dark:hover:text-white transition-colors flex-shrink-0">
+                                <span className="material-symbols-rounded text-[22px] flex-shrink-0">create_new_folder</span>
                             </button>
-                            <button onClick={() => setIsSettingsOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-full text-[#94A3B8] hover:text-slate-600 dark:hover:text-white transition-colors">
-                                <span className="material-symbols-rounded text-[22px]">more_vert</span>
+                            <button onClick={() => setIsSettingsOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-full text-[#94A3B8] hover:text-slate-600 dark:hover:text-white transition-colors flex-shrink-0">
+                                <span className="material-symbols-rounded text-[22px] flex-shrink-0">more_vert</span>
                             </button>
                         </div>
                     </div>
 
                     {/* Linked Badge Pill */}
                     <div className="mb-12">
-                        <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-[#EEF2FF] dark:bg-indigo-500/5 border border-[#E0E7FF] dark:border-indigo-500/10 rounded-2xl text-[#4F46E5] dark:text-indigo-400 font-bold text-[14px]">
-                            <span className="material-symbols-rounded text-[20px]">language</span>
-                            <span>Linked to {domain}</span>
-                            <span className="material-symbols-rounded text-[18px] ml-1 opacity-50">open_in_new</span>
+                        <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-[#EEF2FF] dark:bg-indigo-500/5 border border-[#E0E7FF] dark:border-indigo-500/10 rounded-2xl text-[#4F46E5] dark:text-indigo-400 font-bold text-[14px] flex-shrink-0">
+                            <span className="material-symbols-rounded text-[20px] flex-shrink-0">language</span>
+                            <span className="whitespace-nowrap">Linked to {domain}</span>
+                            <span className="material-symbols-rounded text-[18px] ml-1 opacity-50 flex-shrink-0">open_in_new</span>
                         </div>
                     </div>
 
-                    {/* Content Editor (Large font) */}
+                    {/* Content Area (Large font) */}
                     <textarea
                         ref={textareaRef}
                         className="w-full bg-transparent text-[58px] font-black text-[#1E293B] dark:text-white mb-4 outline-none border-none focus:ring-0 placeholder-slate-200 dark:placeholder-white/5 leading-[1.05] tracking-tighter p-0 resize-none font-display overflow-hidden"
@@ -277,9 +277,9 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                         }}
                     />
 
-                    {/* Secondary Title Area (# Tags) */}
+                    {/* Secondary Reference Area (# Tags) */}
                     <div className="flex items-start gap-3 mb-8 group">
-                        <span className="material-symbols-rounded text-slate-300 dark:text-white/20 text-[22px] mt-1">tag</span>
+                        <span className="material-symbols-rounded text-slate-300 dark:text-white/20 text-[22px] mt-1 flex-shrink-0">tag</span>
                         <textarea
                             rows={1}
                             className="flex-1 bg-transparent text-[20px] font-bold text-[#94A3B8] dark:text-white/30 outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/10 p-0 resize-none font-display overflow-hidden"
