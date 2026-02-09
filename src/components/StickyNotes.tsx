@@ -7,7 +7,7 @@ interface StickyNotesProps {
 }
 
 const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
-    const [layout, setLayout] = useState<PanelLayout>({
+    const [layout, setLayout] = useState({
         x: 50,
         y: 50,
         width: 380,
@@ -16,19 +16,30 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
         isOpen: true
     });
 
+    // Position and size state
+    const [position, setPosition] = useState({ x: 50, y: 50 });
+    const [size, setSize] = useState({ width: 380, height: 500 });
+
+    const [isDragging, setIsDragging] = useState(false);
+    const [isResizing, setIsResizing] = useState(false);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
+
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [isSaved, setIsSaved] = useState(true);
-    const [isDragging, setIsDragging] = useState(false);
-    const [isResizing, setIsResizing] = useState(false);
 
-    // Resize state
-    const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, w: 0, h: 0 });
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    const dragStart = useRef({ x: 0, y: 0 });
-
+    // Sync with storage layout
     useEffect(() => {
-        storage.getPanelLayout().then(setLayout);
+        storage.getPanelLayout().then((l) => {
+            if (l) {
+                setLayout(l);
+                setPosition({ x: l.x, y: l.y });
+                setSize({ width: l.width, height: l.height });
+            }
+        });
 
         // Load draft
         chrome.storage.local.get(['panelDraft']).then((res) => {
@@ -40,24 +51,12 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
         });
     }, []);
 
-    // Save layout on change
-    useEffect(() => {
-        if (!isDragging && !isResizing) {
-            storage.savePanelLayout(layout);
-        }
-    }, [layout, isDragging, isResizing]);
-
-    // Save draft content
-    useEffect(() => {
-        const draft = {
-            title,
-            content,
-            updatedAt: Date.now()
-        };
-        chrome.storage.local.set({ panelDraft: draft });
-        setIsSaved(false);
-    }, [title, content]);
-
+    // Format date like "MONDAY, 9 FEBRUARY"
+    const formattedDate = new Date().toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+    }).toUpperCase().replace(/(\d+)/, '$1,');
 
     const handleDragStart = (e: React.MouseEvent) => {
         if ((e.target as HTMLElement).closest('button') ||
@@ -65,8 +64,12 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
             (e.target as HTMLElement).closest('input')) {
             return;
         }
+
         setIsDragging(true);
-        dragStart.current = { x: e.clientX - layout.x, y: e.clientY - layout.y };
+        setDragOffset({
+            x: e.clientX - position.x,
+            y: e.clientY - position.y
+        });
     };
 
     const handleResizeStart = (e: React.MouseEvent) => {
@@ -75,29 +78,38 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
         setResizeStart({
             x: e.clientX,
             y: e.clientY,
-            w: layout.width,
-            h: layout.height
+            width: size.width,
+            height: size.height
         });
     };
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
-            if (isDragging) {
-                const newX = e.clientX - dragStart.current.x;
-                const newY = Math.max(0, e.clientY - dragStart.current.y);
-                setLayout(prev => ({ ...prev, x: newX, y: newY }));
+            if (isDragging && !isResizing) {
+                const newX = e.clientX - dragOffset.x;
+                const newY = Math.max(0, e.clientY - dragOffset.y);
+
+                setPosition({ x: newX, y: newY });
             } else if (isResizing) {
-                const dx = e.clientX - resizeStart.x;
-                const dy = e.clientY - resizeStart.y;
-                const newW = Math.max(350, resizeStart.w + dx);
-                const newH = Math.max(400, resizeStart.h + dy);
-                setLayout(prev => ({ ...prev, width: newW, height: newH }));
+                const deltaX = e.clientX - resizeStart.x;
+                const deltaY = e.clientY - resizeStart.y;
+
+                const newWidth = Math.max(300, resizeStart.width + deltaX);
+                const newHeight = Math.max(300, resizeStart.height + deltaY);
+
+                setSize({ width: newWidth, height: newHeight });
             }
         };
 
         const handleMouseUp = () => {
-            setIsDragging(false);
-            setIsResizing(false);
+            if (isDragging) {
+                setIsDragging(false);
+                storage.savePanelLayout({ ...layout, x: position.x, y: position.y });
+            }
+            if (isResizing) {
+                setIsResizing(false);
+                storage.savePanelLayout({ ...layout, width: size.width, height: size.height });
+            }
         };
 
         if (isDragging || isResizing) {
@@ -108,11 +120,17 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                 window.removeEventListener('mouseup', handleMouseUp);
             };
         }
-    }, [isDragging, isResizing, resizeStart]);
+    }, [isDragging, isResizing, dragOffset, resizeStart, position, size, layout]);
 
     const handleSave = async () => {
-        if (!title.trim() && !content.trim()) return;
-        const draft: NoteDraft = {
+        const noteDraft = {
+            title,
+            content,
+            updatedAt: Date.now()
+        };
+        chrome.storage.local.set({ panelDraft: noteDraft });
+
+        const newNote = {
             title: title || 'Untitled',
             content,
             tags: [],
@@ -122,57 +140,69 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
             favicon: `https://www.google.com/s2/favicons?domain=${window.location.hostname}`,
             folderIds: []
         };
-        await storage.createNote(draft);
+        await storage.createNote(newNote);
+
+        setIsSaved(true);
         setTitle('');
         setContent('');
-        setIsSaved(true);
-        // Simple alert as fallback status
     };
 
-    const formattedDate = new Date().toLocaleDateString('en-GB', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long'
-    }).toUpperCase().replace(/(\d+)/, '$1,');
+    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setTitle(e.target.value);
+        setIsSaved(false);
+    };
+
+    const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setContent(e.target.value);
+        setIsSaved(false);
+    };
 
     const domain = window.location.hostname || 'chat.deepseek.com';
 
     return (
         <div
+            ref={containerRef}
             style={{
                 position: 'fixed',
-                left: `${layout.x}px`,
-                top: `${layout.y}px`,
-                width: `${layout.width}px`,
-                height: `${layout.height}px`,
+                left: position.x,
+                top: position.y,
+                width: size.width,
+                height: size.height,
+                minHeight: '400px',
                 zIndex: 2147483647,
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', // shadow-2xl equivalent
+                backgroundColor: '#ffffff',
+                color: '#1e293b',
             }}
-            className="flex flex-col rounded-xl border border-gray-200 bg-white font-sans text-gray-900"
+            className="flex flex-col rounded-xl shadow-2xl border border-gray-200 font-sans select-none"
         >
-            {/* Header */}
+            {/* HEADER */}
             <header
                 onMouseDown={handleDragStart}
-                className="px-6 py-4 flex items-center justify-between cursor-move select-none border-b border-gray-100 bg-gray-50 rounded-t-xl"
+                className="px-6 py-4 flex items-center justify-between cursor-move border-b border-gray-100 bg-gray-50 rounded-t-xl"
             >
-                <span className="text-lg font-bold text-gray-800 tracking-wide">EDIT NOTE</span>
+                <div className="flex items-center">
+                    <span className="text-lg font-bold text-gray-900 tracking-wide">EDIT NOTE</span>
+                </div>
+
                 <div className="flex items-center gap-2">
+                    {!isSaved && (
+                        <span className="text-xs text-gray-400 font-medium animate-pulse">Unsaved</span>
+                    )}
                     <button
                         onClick={handleSave}
                         className="px-5 py-2 bg-indigo-600 text-white text-sm font-bold rounded-full hover:bg-indigo-700 transition-colors shadow-sm"
                     >
                         Save
                     </button>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold px-2">
+                    <button onClick={onClose} className="ml-2 text-gray-400 hover:text-gray-600 font-bold px-2">
                         ✕
                     </button>
                 </div>
             </header>
 
-            {/* Content */}
+            {/* MAIN CONTENT */}
             <main className="flex-1 flex flex-col p-6 overflow-hidden bg-white rounded-b-xl relative">
                 <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
-
                     {/* Date */}
                     <div className="mb-2">
                         <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
@@ -194,24 +224,26 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                         </span>
                     </div>
 
-                    {/* Hashtag Heading / Title */}
-                    <div className="mb-6 flex items-center border-b border-transparent focus-within:border-indigo-100 transition-colors">
-                        <span className="text-2xl font-bold text-gray-400 mr-2">#</span>
-                        <input
-                            type="text"
-                            className="flex-1 bg-transparent text-2xl font-bold text-gray-900 outline-none border-none focus:ring-0 p-0 placeholder-gray-300"
-                            placeholder="Actualize Tags"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                        />
+                    {/* Title Input */}
+                    <div className="mb-6 flex items-center border-b border-transparent focus-within:border-indigo-50 transition-colors">
+                        <div className="flex items-center w-full">
+                            <span className="text-2xl font-bold text-gray-400 mr-2">#</span>
+                            <input
+                                type="text"
+                                className="flex-1 bg-transparent text-2xl font-bold text-gray-900 outline-none border-none focus:ring-0 p-0 placeholder-gray-300"
+                                placeholder="Actualize Tags"
+                                value={title}
+                                onChange={handleTitleChange}
+                            />
+                        </div>
                     </div>
 
-                    {/* Main Content */}
+                    {/* Content Textarea */}
                     <textarea
                         className="w-full flex-1 bg-transparent text-base leading-relaxed text-gray-700 outline-none border-none focus:ring-0 placeholder-gray-400 p-0 resize-none min-h-[150px]"
                         placeholder="Type something amazing..."
                         value={content}
-                        onChange={(e) => setContent(e.target.value)}
+                        onChange={handleContentChange}
                     />
                 </div>
 
