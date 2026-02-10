@@ -313,25 +313,31 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
     return (
         <div ref={containerRef} style={styles.container}>
             {/* Header */}
-            <header style={styles.header} onMouseDown={handleDragStart}>
-                <div style={styles.headerTitle}>EDIT NOTE</div>
-                <div style={styles.actions}>
-                    {!isSaved && <span style={styles.unsaved}>Unsaved</span>}
-                    <button
-                        onClick={handleSave}
-                        style={styles.saveBtn}
-                        onMouseEnter={() => setSaveHover(true)}
-                        onMouseLeave={() => setSaveHover(false)}
-                    >
-                        Save
+            <header
+                onMouseDown={handleDragStart}
+                className="px-6 py-4 flex items-center justify-between cursor-move border-b border-gray-100 bg-gray-50 rounded-t-xl"
+                style={{ gap: '12px' }}
+            >
+                <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center shadow-sm">
+                        <span className="material-symbols-rounded text-slate-500 text-[24px]">
+                            chevron_left
+                        </span>
+                    </div>
+                    <span className="text-[18px] font-extrabold text-[#94A3B8] tracking-wider whitespace-nowrap">
+                        EDIT NOTE
+                    </span>
+                </div>
+
+                <div className="flex items-center gap-3 flex-shrink-0">
+                    <button className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] transition-colors cursor-pointer">
+                        <span className="material-symbols-rounded text-[24px]">light_mode</span>
                     </button>
-                    <button
-                        onClick={onClose}
-                        style={styles.closeBtn}
-                        onMouseEnter={() => setCloseHover(true)}
-                        onMouseLeave={() => setCloseHover(false)}
-                    >
-                        ✕
+                    <button className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] transition-colors cursor-pointer">
+                        <span className="material-symbols-rounded text-[24px]">open_in_folder</span>
+                    </button>
+                    <button onClick={handleSave} className="bg-[#4F46E5] text-white px-6 py-2 rounded-full font-bold text-[14px] hover:bg-[#4338CA] active:scale-95 transition-all shadow-[0_10px_25px_-5px_rgba(79,70,229,0.4)]">
+                        Save
                     </button>
                 </div>
             </header>
