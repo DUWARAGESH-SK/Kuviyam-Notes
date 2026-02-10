@@ -168,67 +168,83 @@ const minimalCSS = `
 `;
 
 async function mountPanel() {
-    if (panelMounted) return;
+  if (panelMounted) return;
 
-    let root = document.getElementById(id);
-    if (!root) {
-        root = document.createElement('div');
-        root.id = id;
-        document.body.appendChild(root);
-    }
+  let root = document.getElementById(id);
+  if (!root) {
+    root = document.createElement('div');
+    root.id = id;
+    document.body.appendChild(root);
+  }
 
-    const shadow = root.attachShadow({ mode: 'open' });
+  const shadow = root.attachShadow({ mode: 'open' });
 
-    // Style container
-    const shadowRoot = document.createElement('div');
-    shadowRoot.id = 'kuviyam-panel-container';
-    shadowRoot.style.position = 'fixed';
-    shadowRoot.style.zIndex = '2147483647';
-    shadowRoot.style.pointerEvents = 'none';
-    shadowRoot.style.inset = '0';
-    shadow.appendChild(shadowRoot);
+  // Style container
+  const shadowRoot = document.createElement('div');
+  shadowRoot.id = 'kuviyam-panel-container';
+  shadowRoot.style.position = 'fixed';
+  shadowRoot.style.zIndex = '2147483647';
+  shadowRoot.style.pointerEvents = 'none';
+  shadowRoot.style.inset = '0';
+  shadow.appendChild(shadowRoot);
 
-    // Inject MINIMAL CSS
-    const style = document.createElement('style');
-    style.textContent = minimalCSS;
-    shadow.appendChild(style);
+  // DIAGNOSTIC STYLE START
+  const testStyle = document.createElement('style');
+  testStyle.textContent = `
+      button {
+        background: red !important;
+        color: white !important;
+        padding: 10px !important;
+        border-radius: 5px !important;
+      }
+      div {
+        border: 1px solid blue !important;
+      }
+    `;
+  shadow.appendChild(testStyle);
+  // DIAGNOSTIC STYLE END
 
-    // NO EXTERNAL FONTS - Using System Fonts defined in minimalCSS
+  // Inject MINIMAL CSS
+  const style = document.createElement('style');
+  style.textContent = minimalCSS;
+  shadow.appendChild(style);
 
-    // IMPORTANT: Enable pointer events on the panel container itself
-    const reactContainer = document.createElement('div');
-    reactContainer.style.pointerEvents = 'auto'; // This allows interaction
-    shadowRoot.appendChild(reactContainer);
+  // NO EXTERNAL FONTS - Using System Fonts defined in minimalCSS
 
-    const reactRoot = createRoot(reactContainer);
-    reactRoot.render(
-        <React.StrictMode>
-            <StickyNotes onClose={() => {
-                shadowRoot.style.display = 'none';
-                storage.getPanelLayout().then(layout => {
-                    storage.savePanelLayout({ ...layout, isOpen: false });
-                });
-            }} />
-        </React.StrictMode>
-    );
+  // IMPORTANT: Enable pointer events on the panel container itself
+  const reactContainer = document.createElement('div');
+  reactContainer.style.pointerEvents = 'auto'; // This allows interaction
+  shadowRoot.appendChild(reactContainer);
 
-    panelMounted = true;
+  const reactRoot = createRoot(reactContainer);
+  reactRoot.render(
+    <React.StrictMode>
+      <StickyNotes onClose={() => {
+        shadowRoot.style.display = 'none';
+        storage.getPanelLayout().then(layout => {
+          storage.savePanelLayout({ ...layout, isOpen: false });
+        });
+      }} />
+    </React.StrictMode>
+  );
+
+  panelMounted = true;
 }
 
 // Auto-restore on load if was open
 storage.getPanelLayout().then(layout => {
-    if (layout.isOpen) {
-        mountPanel();
-    }
+  if (layout.isOpen) {
+    mountPanel();
+  }
 });
 
 chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === 'KUV_OPEN_PANEL') {
-        mountPanel();
-        const root = document.getElementById(id);
-        if (root && root.shadowRoot) {
-            const container = root.shadowRoot.querySelector('#kuviyam-panel-container');
-            if (container instanceof HTMLElement) container.style.display = 'block';
-        }
+  if (message.type === 'KUV_OPEN_PANEL') {
+    mountPanel();
+    const root = document.getElementById(id);
+    if (root && root.shadowRoot) {
+      const container = root.shadowRoot.querySelector('#kuviyam-panel-container');
+      if (container instanceof HTMLElement) container.style.display = 'block';
     }
+  }
 });
