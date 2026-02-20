@@ -202,6 +202,8 @@ async function mountPanel() {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      -webkit-font-smoothing: auto !important;
+      -moz-osx-font-smoothing: auto !important;
     }
     
     /* Force Material Icons to load */
@@ -224,7 +226,6 @@ async function mountPanel() {
       white-space: nowrap;
       word-wrap: normal;
       direction: ltr;
-      -webkit-font-smoothing: antialiased;
     }
     
     /* Ensure buttons are visible and stacked correctly */
@@ -263,6 +264,21 @@ async function mountPanel() {
       display: inline-block !important;
       visibility: visible !important;
       opacity: 1 !important;
+    }
+
+    /* Custom scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
     }
   `;
   shadow.appendChild(style);

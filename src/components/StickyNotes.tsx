@@ -91,15 +91,15 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (isDragging && !isResizing) {
-                const newX = e.clientX - dragOffset.x;
-                const newY = Math.max(0, e.clientY - dragOffset.y);
+                const newX = Math.round(e.clientX - dragOffset.x);
+                const newY = Math.round(Math.max(0, e.clientY - dragOffset.y));
                 setPosition({ x: newX, y: newY });
             } else if (isResizing) {
                 const deltaX = e.clientX - resizeStart.x;
                 const deltaY = e.clientY - resizeStart.y;
-                const newW = Math.max(300, resizeStart.width + deltaX);
-                const newH = Math.max(300, resizeStart.height + deltaY);
-                setSize({ width: newW, height: newHeight });
+                const newW = Math.round(Math.max(300, resizeStart.width + deltaX));
+                const newH = Math.round(Math.max(300, resizeStart.height + deltaY));
+                setSize({ width: newW, height: newH });
             }
         };
 
@@ -324,16 +324,16 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                             chevron_left
                         </span>
                     </div>
-                    <span className="text-[18px] font-extrabold text-[#94A3B8] tracking-wider whitespace-nowrap">
+                    <span className="text-[18px] font-extrabold text-[#64748b] tracking-wider whitespace-nowrap">
                         EDIT NOTE
                     </span>
                 </div>
 
                 <div className="flex items-center gap-3 flex-shrink-0">
-                    <button className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] transition-colors cursor-pointer">
+                    <button className="w-10 h-10 flex items-center justify-center text-[#64748b] hover:text-[#4F46E5] transition-colors cursor-pointer">
                         <span className="material-symbols-rounded text-[24px]">light_mode</span>
                     </button>
-                    <button className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] transition-colors cursor-pointer">
+                    <button className="w-10 h-10 flex items-center justify-center text-[#64748b] hover:text-[#4F46E5] transition-colors cursor-pointer">
                         <span className="material-symbols-rounded text-[24px]">open_in_folder</span>
                     </button>
                     <button onClick={handleSave} className="bg-[#4F46E5] text-white px-6 py-2 rounded-full font-bold text-[14px] hover:bg-[#4338CA] active:scale-95 transition-all shadow-[0_10px_25px_-5px_rgba(79,70,229,0.4)]">
