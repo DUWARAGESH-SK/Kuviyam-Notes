@@ -4,7 +4,11 @@ import { storage } from '../utils/storage';
 import { AddNotesToFolderModal } from './AddNotesToFolderModal';
 import { FocusMode } from './FocusMode';
 
-export function FoldersPanel() {
+export interface FoldersPanelProps {
+    onEditNote?: (note: Note) => void;
+}
+
+export function FoldersPanel({ onEditNote }: FoldersPanelProps) {
     const [folders, setFolders] = useState<Folder[]>([]); // Current level folders
     const [notes, setNotes] = useState<Note[]>([]); // Current level notes
     const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -264,9 +268,8 @@ export function FoldersPanel() {
                     note={focusedNote}
                     onClose={() => setFocusedNote(null)}
                     onEdit={() => {
-                        // For now just close focus mode, in a real app we'd trigger the edit view
+                        onEditNote?.(focusedNote);
                         setFocusedNote(null);
-                        // Communicate with App.tsx if needed
                     }}
                     onToggleFavorite={() => handleToggleFavorite(focusedNote)}
                     isDark={true} // Default to dark for focus mode as per spec
