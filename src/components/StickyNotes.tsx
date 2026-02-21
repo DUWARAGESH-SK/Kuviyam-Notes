@@ -1,41 +1,76 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { storage } from '../utils/storage';
-import type { PanelLayout, NoteDraft } from '../types';
 
 interface StickyNotesProps {
     onClose: () => void;
 }
 
+// SVG Icons — no dependency on any icon font
+const CloseIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+);
+
+const SaveIcon = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+        <polyline points="17 21 17 13 7 13 7 21" />
+        <polyline points="7 3 7 8 15 8" />
+    </svg>
+);
+
+const TagIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+        <line x1="7" y1="7" x2="7.01" y2="7" />
+    </svg>
+);
+
+const LinkIcon = () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+);
+
+const CheckIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+    </svg>
+);
+
 const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
     // --- STATE ---
-    const [layout, setLayout] = useState({
-        x: 50,
-        y: 50,
-        width: 380,
-        height: 500,
-        isMinimized: false,
-        isOpen: true
-    });
-
-    const [position, setPosition] = useState({ x: 50, y: 50 });
-    const [size, setSize] = useState({ width: 380, height: 500 });
+    const [position, setPosition] = useState({ x: 60, y: 60 });
+    const [size, setSize] = useState({ width: 400, height: 520 });
+    const [layout, setLayout] = useState({ x: 60, y: 60, width: 400, height: 520, isMinimized: false, isOpen: true });
 
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
+    const [resizeDir, setResizeDir] = useState<string>('');
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
+    const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0, posX: 0, posY: 0 });
 
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [tags, setTags] = useState<string[]>([]);
+    const [tagInput, setTagInput] = useState('');
     const [isSaved, setIsSaved] = useState(true);
+    const [showSavedToast, setShowSavedToast] = useState(false);
 
-    // Hover states for interactions
-    const [saveHover, setSaveHover] = useState(false);
-    const [closeHover, setCloseHover] = useState(false);
+    // Hover states
+    const [hoverClose, setHoverClose] = useState(false);
+    const [hoverSave, setHoverSave] = useState(false);
+    const [hoverTagAdd, setHoverTagAdd] = useState(false);
+    const [focusTitle, setFocusTitle] = useState(false);
+    const [focusContent, setFocusContent] = useState(false);
 
     const containerRef = useRef<HTMLDivElement>(null);
+    const titleRef = useRef<HTMLInputElement>(null);
 
-    // --- EFFECTS ---
+    // --- LOAD SAVED DATA ---
     useEffect(() => {
         storage.getPanelLayout().then((l) => {
             if (l) {
@@ -44,62 +79,84 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                 setSize({ width: l.width, height: l.height });
             }
         });
-
         chrome.storage.local.get(['panelDraft']).then((res) => {
             const draft = res.panelDraft as any;
             if (draft) {
                 setTitle(draft.title || '');
                 setContent(draft.content || '');
+                setTags(draft.tags || []);
             }
         });
+        setTimeout(() => titleRef.current?.focus(), 100);
     }, []);
 
-    // Format date
+    // --- AUTO-SAVE DRAFT ---
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (!isSaved) {
+                chrome.storage.local.set({ panelDraft: { title, content, tags, updatedAt: Date.now() } });
+            }
+        }, 800);
+        return () => clearTimeout(timer);
+    }, [title, content, tags, isSaved]);
+
+    // --- FORMATTED DATE ---
     const formattedDate = new Date().toLocaleDateString('en-GB', {
         weekday: 'long',
         day: 'numeric',
-        month: 'long'
-    }).toUpperCase().replace(/(\d+)/, '$1,');
+        month: 'long',
+        year: 'numeric'
+    });
 
-    const domain = window.location.hostname || 'chat.deepseek.com';
+    const domain = (() => {
+        try { return window.location.hostname || 'kuviyam'; } catch { return 'kuviyam'; }
+    })();
 
-    // --- HANDLERS ---
+    // --- DRAG ---
     const handleDragStart = (e: React.MouseEvent) => {
-        if ((e.target as HTMLElement).closest('button') ||
-            (e.target as HTMLElement).closest('textarea') ||
-            (e.target as HTMLElement).closest('input')) {
-            return;
-        }
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('textarea') || target.closest('input')) return;
+        e.preventDefault();
         setIsDragging(true);
-        setDragOffset({
-            x: e.clientX - position.x,
-            y: e.clientY - position.y
-        });
+        setDragOffset({ x: e.clientX - position.x, y: e.clientY - position.y });
     };
 
-    const handleResizeStart = (e: React.MouseEvent) => {
+    // --- RESIZE ---
+    const handleResizeStart = (e: React.MouseEvent, dir: string) => {
         e.stopPropagation();
+        e.preventDefault();
         setIsResizing(true);
-        setResizeStart({
-            x: e.clientX,
-            y: e.clientY,
-            width: size.width,
-            height: size.height
-        });
+        setResizeDir(dir);
+        setResizeStart({ x: e.clientX, y: e.clientY, width: size.width, height: size.height, posX: position.x, posY: position.y });
     };
 
+    // --- MOUSE MOVE/UP ---
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
-            if (isDragging && !isResizing) {
-                const newX = Math.round(e.clientX - dragOffset.x);
-                const newY = Math.round(Math.max(0, e.clientY - dragOffset.y));
+            if (isDragging) {
+                const newX = Math.max(0, e.clientX - dragOffset.x);
+                const newY = Math.max(0, e.clientY - dragOffset.y);
                 setPosition({ x: newX, y: newY });
             } else if (isResizing) {
-                const deltaX = e.clientX - resizeStart.x;
-                const deltaY = e.clientY - resizeStart.y;
-                const newW = Math.round(Math.max(300, resizeStart.width + deltaX));
-                const newH = Math.round(Math.max(300, resizeStart.height + deltaY));
+                const dx = e.clientX - resizeStart.x;
+                const dy = e.clientY - resizeStart.y;
+                let newW = resizeStart.width;
+                let newH = resizeStart.height;
+                let newX = resizeStart.posX;
+                let newY = resizeStart.posY;
+
+                if (resizeDir.includes('e')) newW = Math.max(340, resizeStart.width + dx);
+                if (resizeDir.includes('s')) newH = Math.max(360, resizeStart.height + dy);
+                if (resizeDir.includes('w')) {
+                    newW = Math.max(340, resizeStart.width - dx);
+                    newX = resizeStart.posX + (resizeStart.width - newW);
+                }
+                if (resizeDir.includes('n')) {
+                    newH = Math.max(360, resizeStart.height - dy);
+                    newY = resizeStart.posY + (resizeStart.height - newH);
+                }
                 setSize({ width: newW, height: newH });
+                setPosition({ x: newX, y: newY });
             }
         };
 
@@ -110,7 +167,8 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
             }
             if (isResizing) {
                 setIsResizing(false);
-                storage.savePanelLayout({ ...layout, width: size.width, height: size.height });
+                setResizeDir('');
+                storage.savePanelLayout({ ...layout, x: position.x, y: position.y, width: size.width, height: size.height });
             }
         };
 
@@ -122,270 +180,574 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                 window.removeEventListener('mouseup', handleMouseUp);
             };
         }
-    }, [isDragging, isResizing, dragOffset, resizeStart, position, size, layout]);
+    }, [isDragging, isResizing, dragOffset, resizeStart, resizeDir, layout, position, size]);
 
+    // --- SAVE ---
     const handleSave = async () => {
-        const noteDraft = { title, content, updatedAt: Date.now() };
-        chrome.storage.local.set({ panelDraft: noteDraft });
-
         const newNote = {
-            title: title || 'Untitled',
+            title: title.trim() || 'Untitled',
             content,
-            tags: [],
+            tags,
             pinned: false,
-            domain: window.location.hostname,
-            url: window.location.href,
-            favicon: `https://www.google.com/s2/favicons?domain=${window.location.hostname}`,
+            domain,
+            url: (() => { try { return window.location.href; } catch { return ''; } })(),
+            favicon: `https://www.google.com/s2/favicons?domain=${domain}&sz=32`,
             folderIds: []
         };
         await storage.createNote(newNote);
+        chrome.storage.local.set({ panelDraft: { title: '', content: '', tags: [], updatedAt: Date.now() } });
         setIsSaved(true);
+        setShowSavedToast(true);
         setTitle('');
         setContent('');
+        setTags([]);
+        setTimeout(() => setShowSavedToast(false), 2500);
     };
 
-    // --- STYLES (Inline to guarantee rendering) ---
-    const styles = {
-        container: {
-            position: 'fixed' as const,
-            left: position.x,
-            top: position.y,
-            width: size.width,
-            height: size.height,
-            minHeight: '400px',
-            zIndex: 2147483647,
-            backgroundColor: '#ffffff',
-            color: '#1e293b',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-            borderRadius: '12px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0,0,0,0.05)',
-            display: 'flex',
-            flexDirection: 'column' as const,
-        },
-        header: {
-            padding: '16px 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: '1px solid #f3f4f6',
-            backgroundColor: '#f9fafb',
-            borderTopLeftRadius: '12px',
-            borderTopRightRadius: '12px',
-            cursor: 'move',
-            userSelect: 'none' as const,
-        },
-        headerTitle: {
-            fontSize: '18px',
-            fontWeight: '700',
-            color: '#111827',
-            letterSpacing: '0.025em',
-        },
-        actions: {
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-        },
-        unsaved: {
-            fontSize: '12px',
-            fontWeight: '500',
-            color: '#9ca3af',
-            marginRight: '8px',
-            animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        },
-        saveBtn: {
-            padding: '8px 20px',
-            backgroundColor: saveHover ? '#4338ca' : '#4f46e5', // Darker on hover
-            color: 'white',
-            fontSize: '14px',
-            fontWeight: '700',
-            borderRadius: '9999px',
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-            transition: 'background-color 0.15s ease',
-        },
-        closeBtn: {
-            marginLeft: '8px',
-            color: closeHover ? '#4b5563' : '#9ca3af',
-            fontWeight: 'bold',
-            padding: '4px',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '18px',
-            lineHeight: '1',
-        },
-        main: {
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column' as const,
-            padding: '24px',
-            overflow: 'hidden',
-            backgroundColor: 'white',
-            borderBottomLeftRadius: '12px',
-            borderBottomRightRadius: '12px',
-            position: 'relative' as const,
-        },
-        contentScroll: {
-            flex: 1,
-            overflowY: 'auto' as const,
-            display: 'flex',
-            flexDirection: 'column' as const,
-        },
-        date: {
-            fontSize: '12px',
-            fontWeight: '700',
-            color: '#6b7280',
-            textTransform: 'uppercase' as const,
-            letterSpacing: '0.1em',
-            marginBottom: '8px',
-        },
-        domain: {
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#4f46e5',
-            marginBottom: '24px',
-        },
-        label: {
-            fontSize: '18px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '4px',
-            display: 'block',
-        },
-        titleContainer: {
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            borderBottom: '1px solid transparent',
-        },
-        hashtag: {
-            fontSize: '24px',
-            fontWeight: '700',
-            color: '#9ca3af',
-            marginRight: '8px',
-        },
-        titleInput: {
-            flex: 1,
-            backgroundColor: 'transparent',
-            fontSize: '24px',
-            fontWeight: '700',
-            color: '#111827',
-            outline: 'none',
-            border: 'none',
-            padding: 0,
-            width: '100%',
-        },
-        textarea: {
-            width: '100%',
-            flex: 1,
-            backgroundColor: 'transparent',
-            fontSize: '16px',
-            lineHeight: '1.6',
-            color: '#374151',
-            outline: 'none',
-            border: 'none',
-            padding: 0,
-            resize: 'none' as const,
-            minHeight: '150px',
-            fontFamily: 'inherit',
-        },
-        resizeHandle: {
-            position: 'absolute' as const,
-            bottom: 0,
-            right: 0,
-            width: '32px',
-            height: '32px',
-            cursor: 'se-resize',
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'flex-end',
-            padding: '8px',
-        },
-        resizeIcon: {
-            width: '10px',
-            height: '10px',
-            borderRight: '2px solid #d1d5db',
-            borderBottom: '2px solid #d1d5db',
+    // --- TAG HANDLING ---
+    const addTag = () => {
+        const trimmed = tagInput.trim().replace(/^#/, '');
+        if (trimmed && !tags.includes(trimmed)) {
+            setTags([...tags, trimmed]);
+            setIsSaved(false);
+        }
+        setTagInput('');
+    };
+
+    const removeTag = (tag: string) => {
+        setTags(tags.filter(t => t !== tag));
+        setIsSaved(false);
+    };
+
+    const handleTagKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(); }
+        if (e.key === 'Backspace' && !tagInput && tags.length) {
+            setTags(tags.slice(0, -1));
+            setIsSaved(false);
         }
     };
 
-    return (
-        <div ref={containerRef} style={styles.container}>
-            {/* Header */}
-            <header
-                onMouseDown={handleDragStart}
-                className="px-6 py-4 flex items-center justify-between cursor-move border-b border-gray-100 bg-gray-50 rounded-t-xl"
-                style={{ gap: '12px' }}
-            >
-                <div className="flex items-center gap-3 flex-shrink-0">
-                    <div className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center shadow-sm">
-                        <span className="material-symbols-rounded text-slate-500 text-[24px]">
-                            chevron_left
-                        </span>
-                    </div>
-                    <span className="text-[18px] font-extrabold text-[#64748b] tracking-wider whitespace-nowrap">
-                        EDIT NOTE
-                    </span>
-                </div>
+    // ─── INLINE STYLES ───────────────────────────────────────────────────────
+    const S = {
+        panel: {
+            position: 'fixed' as const,
+            left: `${position.x}px`,
+            top: `${position.y}px`,
+            width: `${size.width}px`,
+            height: `${size.height}px`,
+            minWidth: '340px',
+            minHeight: '360px',
+            zIndex: 2147483647,
+            display: 'flex',
+            flexDirection: 'column' as const,
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 32px 64px -12px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08)',
+            background: 'linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
+            color: '#e2e8f0',
+            cursor: isDragging ? 'grabbing' : 'default',
+            userSelect: isDragging ? 'none' as const : 'text' as const,
+        },
 
-                <div className="flex items-center gap-3 flex-shrink-0">
-                    <button className="w-10 h-10 flex items-center justify-center text-[#64748b] hover:text-[#4F46E5] transition-colors cursor-pointer">
-                        <span className="material-symbols-rounded text-[24px]">light_mode</span>
-                    </button>
-                    <button className="w-10 h-10 flex items-center justify-center text-[#64748b] hover:text-[#4F46E5] transition-colors cursor-pointer">
-                        <span className="material-symbols-rounded text-[24px]">open_in_folder</span>
-                    </button>
-                    <button onClick={handleSave} className="bg-[#4F46E5] text-white px-6 py-2 rounded-full font-bold text-[14px] hover:bg-[#4338CA] active:scale-95 transition-all shadow-[0_10px_25px_-5px_rgba(79,70,229,0.4)]">
+        // Gradient accent bar at top
+        accentBar: {
+            height: '3px',
+            background: 'linear-gradient(90deg, #6366f1, #8b5cf6, #a78bfa, #c4b5fd)',
+            flexShrink: 0,
+        },
+
+        header: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 18px',
+            background: 'rgba(255,255,255,0.04)',
+            borderBottom: '1px solid rgba(255,255,255,0.07)',
+            cursor: 'grab',
+            flexShrink: 0,
+            gap: '12px',
+        },
+
+        headerLeft: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            flex: 1,
+            minWidth: 0,
+        },
+
+        logo: {
+            width: '32px',
+            height: '32px',
+            borderRadius: '9px',
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            boxShadow: '0 4px 12px rgba(99,102,241,0.4)',
+        },
+
+        logoText: {
+            fontSize: '14px',
+            fontWeight: '800',
+            color: '#fff',
+            letterSpacing: '-0.5px',
+        },
+
+        headerTitle: {
+            fontSize: '13px',
+            fontWeight: '600',
+            color: '#94a3b8',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase' as const,
+            whiteSpace: 'nowrap' as const,
+        },
+
+        headerActions: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexShrink: 0,
+        },
+
+        saveBtn: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '7px 16px',
+            background: hoverSave
+                ? 'linear-gradient(135deg, #5558ea, #7c3aed)'
+                : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            color: '#fff',
+            fontWeight: '600',
+            fontSize: '13px',
+            border: 'none',
+            borderRadius: '9999px',
+            cursor: 'pointer',
+            boxShadow: hoverSave
+                ? '0 6px 20px rgba(99,102,241,0.6)'
+                : '0 4px 14px rgba(99,102,241,0.4)',
+            transition: 'all 0.15s ease',
+            transform: hoverSave ? 'translateY(-1px)' : 'none',
+            whiteSpace: 'nowrap' as const,
+            minWidth: 0,
+            minHeight: 0,
+        },
+
+        closeBtn: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '30px',
+            height: '30px',
+            borderRadius: '8px',
+            border: 'none',
+            background: hoverClose ? 'rgba(239,68,68,0.15)' : 'transparent',
+            color: hoverClose ? '#f87171' : '#64748b',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            flexShrink: 0,
+            padding: 0,
+            minWidth: 0,
+            minHeight: 0,
+        },
+
+        body: {
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column' as const,
+            overflow: 'hidden',
+            position: 'relative' as const,
+        },
+
+        scrollArea: {
+            flex: 1,
+            overflowY: 'auto' as const,
+            padding: '20px 22px 12px',
+            display: 'flex',
+            flexDirection: 'column' as const,
+            gap: '4px',
+        },
+
+        dateLine: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '4px',
+        },
+
+        dateText: {
+            fontSize: '10px',
+            fontWeight: '600',
+            color: '#475569',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase' as const,
+        },
+
+        dateDot: {
+            width: '3px',
+            height: '3px',
+            borderRadius: '50%',
+            background: '#334155',
+        },
+
+        domainPill: {
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '3px 8px',
+            background: 'rgba(99,102,241,0.12)',
+            border: '1px solid rgba(99,102,241,0.2)',
+            borderRadius: '9999px',
+            fontSize: '10px',
+            fontWeight: '500',
+            color: '#818cf8',
+            marginBottom: '18px',
+            width: 'fit-content',
+        },
+
+        titleInput: {
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            outline: 'none',
+            fontSize: '22px',
+            fontWeight: '700',
+            color: focusTitle ? '#f1f5f9' : '#e2e8f0',
+            letterSpacing: '-0.3px',
+            lineHeight: '1.3',
+            padding: '0',
+            marginBottom: '4px',
+            fontFamily: 'inherit',
+            caretColor: '#818cf8',
+            transition: 'color 0.15s',
+        },
+
+        titleUnderline: {
+            height: '1px',
+            background: focusTitle
+                ? 'linear-gradient(90deg, #6366f1, transparent)'
+                : 'rgba(255,255,255,0.06)',
+            marginBottom: '16px',
+            transition: 'background 0.3s',
+            borderRadius: '1px',
+        },
+
+        sectionLabel: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '10px',
+            fontWeight: '600',
+            color: '#475569',
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase' as const,
+            marginBottom: '8px',
+        },
+
+        tagRow: {
+            display: 'flex',
+            flexWrap: 'wrap' as const,
+            alignItems: 'center',
+            gap: '6px',
+            padding: '8px 10px',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: '10px',
+            marginBottom: '16px',
+            minHeight: '38px',
+        },
+
+        tagChip: (tag: string) => ({
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '3px 8px',
+            background: 'rgba(99,102,241,0.15)',
+            border: '1px solid rgba(99,102,241,0.3)',
+            borderRadius: '9999px',
+            fontSize: '11px',
+            fontWeight: '500',
+            color: '#a5b4fc',
+            cursor: 'default',
+        }),
+
+        tagX: {
+            cursor: 'pointer',
+            color: '#6366f1',
+            fontSize: '12px',
+            lineHeight: '1',
+            padding: '0 0 0 2px',
+            background: 'none',
+            border: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            fontWeight: '700',
+            minWidth: 0,
+            minHeight: 0,
+        },
+
+        tagInput: {
+            flex: 1,
+            minWidth: '80px',
+            background: 'transparent',
+            border: 'none',
+            outline: 'none',
+            fontSize: '12px',
+            color: '#94a3b8',
+            fontFamily: 'inherit',
+            padding: '2px 0',
+        },
+
+        textarea: {
+            flex: 1,
+            width: '100%',
+            background: focusContent ? 'rgba(255,255,255,0.03)' : 'transparent',
+            border: focusContent ? '1px solid rgba(99,102,241,0.25)' : '1px solid rgba(255,255,255,0.05)',
+            borderRadius: '10px',
+            outline: 'none',
+            fontSize: '14px',
+            lineHeight: '1.7',
+            color: '#cbd5e1',
+            padding: '12px 14px',
+            resize: 'none' as const,
+            minHeight: '120px',
+            fontFamily: 'inherit',
+            caretColor: '#818cf8',
+            transition: 'all 0.2s',
+        },
+
+        footer: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 22px 10px',
+            borderTop: '1px solid rgba(255,255,255,0.05)',
+            flexShrink: 0,
+        },
+
+        footerHint: {
+            fontSize: '10px',
+            color: '#334155',
+            letterSpacing: '0.05em',
+        },
+
+        statusDot: {
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            fontSize: '10px',
+            color: isSaved ? '#22c55e' : '#f59e0b',
+        },
+
+        statusDotIndicator: {
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            background: isSaved ? '#22c55e' : '#f59e0b',
+            boxShadow: isSaved ? '0 0 6px rgba(34,197,94,0.5)' : '0 0 6px rgba(245,158,11,0.5)',
+        },
+
+        // Corner resize handles
+        resizeHandle: (dir: string) => {
+            const base: React.CSSProperties = {
+                position: 'absolute' as const,
+                zIndex: 10,
+            };
+            const map: Record<string, React.CSSProperties> = {
+                'nw': { top: 0, left: 0, width: 12, height: 12, cursor: 'nw-resize' },
+                'n': { top: 0, left: '50%', transform: 'translateX(-50%)', width: 40, height: 6, cursor: 'n-resize' },
+                'ne': { top: 0, right: 0, width: 12, height: 12, cursor: 'ne-resize' },
+                'e': { top: '50%', right: 0, transform: 'translateY(-50%)', width: 6, height: 40, cursor: 'e-resize' },
+                'se': { bottom: 0, right: 0, width: 16, height: 16, cursor: 'se-resize' },
+                's': { bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 40, height: 6, cursor: 's-resize' },
+                'sw': { bottom: 0, left: 0, width: 12, height: 12, cursor: 'sw-resize' },
+                'w': { top: '50%', left: 0, transform: 'translateY(-50%)', width: 6, height: 40, cursor: 'w-resize' },
+            };
+            return { ...base, ...map[dir] };
+        },
+
+        // Toast notification
+        toast: {
+            position: 'absolute' as const,
+            bottom: '54px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+            color: '#fff',
+            padding: '8px 18px',
+            borderRadius: '9999px',
+            fontSize: '12px',
+            fontWeight: '600',
+            boxShadow: '0 8px 24px rgba(34,197,94,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            zIndex: 10,
+            whiteSpace: 'nowrap' as const,
+            animation: 'fadeInUp 0.25s ease',
+        },
+
+        // SE resize grip visual
+        seGrip: {
+            position: 'absolute' as const,
+            bottom: '6px',
+            right: '6px',
+            display: 'flex',
+            flexDirection: 'column' as const,
+            gap: '2px',
+            opacity: 0.3,
+            pointerEvents: 'none' as const,
+        },
+    };
+
+    return (
+        <div ref={containerRef} style={S.panel}>
+            {/* Resize handles — all 8 directions */}
+            {(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const).map(dir => (
+                <div
+                    key={dir}
+                    style={S.resizeHandle(dir)}
+                    onMouseDown={(e) => handleResizeStart(e, dir)}
+                />
+            ))}
+
+            {/* Top accent gradient bar */}
+            <div style={S.accentBar} />
+
+            {/* Header */}
+            <div style={S.header} onMouseDown={handleDragStart}>
+                <div style={S.headerLeft}>
+                    <div style={S.logo}>
+                        <span style={S.logoText}>K</span>
+                    </div>
+                    <span style={S.headerTitle}>New Note</span>
+                </div>
+                <div style={S.headerActions}>
+                    {!isSaved && (
+                        <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '500', whiteSpace: 'nowrap' as const }}>
+                            Unsaved…
+                        </span>
+                    )}
+                    <button
+                        onClick={handleSave}
+                        style={S.saveBtn}
+                        onMouseEnter={() => setHoverSave(true)}
+                        onMouseLeave={() => setHoverSave(false)}
+                    >
+                        <SaveIcon />
                         Save
                     </button>
+                    <button
+                        onClick={onClose}
+                        style={S.closeBtn}
+                        onMouseEnter={() => setHoverClose(true)}
+                        onMouseLeave={() => setHoverClose(false)}
+                        title="Close"
+                    >
+                        <CloseIcon />
+                    </button>
                 </div>
-            </header>
+            </div>
 
-            {/* Main Content */}
-            <main style={styles.main}>
-                <div style={styles.contentScroll} className="custom-scrollbar">
-                    {/* Date */}
-                    <div style={styles.date}>{formattedDate}</div>
+            {/* Body */}
+            <div style={S.body}>
+                <div style={S.scrollArea}>
 
-                    {/* Domain */}
-                    <div style={styles.domain}>Linked to {domain}</div>
-
-                    {/* Label */}
-                    <div style={styles.label}>UI Issues in</div>
+                    {/* Date & Domain */}
+                    <div style={S.dateLine}>
+                        <span style={S.dateText}>{formattedDate}</span>
+                    </div>
+                    <div style={S.domainPill}>
+                        <LinkIcon />
+                        {domain}
+                    </div>
 
                     {/* Title */}
-                    <div style={styles.titleContainer}>
-                        <span style={styles.hashtag}>#</span>
+                    <input
+                        ref={titleRef}
+                        type="text"
+                        placeholder="Note title…"
+                        value={title}
+                        onChange={(e) => { setTitle(e.target.value); setIsSaved(false); }}
+                        onFocus={() => setFocusTitle(true)}
+                        onBlur={() => setFocusTitle(false)}
+                        style={S.titleInput}
+                    />
+                    <div style={S.titleUnderline} />
+
+                    {/* Tags Section */}
+                    <div style={S.sectionLabel}>
+                        <TagIcon />
+                        Tags
+                    </div>
+                    <div style={S.tagRow}>
+                        {tags.map(tag => (
+                            <span key={tag} style={S.tagChip(tag)}>
+                                #{tag}
+                                <button
+                                    style={S.tagX}
+                                    onClick={() => removeTag(tag)}
+                                    title={`Remove #${tag}`}
+                                >×</button>
+                            </span>
+                        ))}
                         <input
                             type="text"
-                            style={styles.titleInput}
-                            placeholder="Actualize Tags"
-                            value={title}
-                            onChange={(e) => {
-                                setTitle(e.target.value);
-                                setIsSaved(false);
-                            }}
+                            placeholder={tags.length === 0 ? 'Add tag…' : '+'}
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={handleTagKeyDown}
+                            onBlur={addTag}
+                            style={S.tagInput}
                         />
                     </div>
 
-                    {/* Textarea */}
+                    {/* Content */}
+                    <div style={S.sectionLabel}>
+                        <span style={{ fontSize: '10px' }}>✦</span>
+                        Content
+                    </div>
                     <textarea
-                        style={styles.textarea}
-                        placeholder="Type something amazing..."
+                        placeholder="Write something amazing…"
                         value={content}
-                        onChange={(e) => {
-                            setContent(e.target.value);
-                            setIsSaved(false);
-                        }}
+                        onChange={(e) => { setContent(e.target.value); setIsSaved(false); }}
+                        onFocus={() => setFocusContent(true)}
+                        onBlur={() => setFocusContent(false)}
+                        style={S.textarea}
                     />
                 </div>
 
-                {/* Resize Handle */}
-                <div style={styles.resizeHandle} onMouseDown={handleResizeStart}>
-                    <div style={styles.resizeIcon}></div>
+                {/* Footer */}
+                <div style={S.footer}>
+                    <span style={S.footerHint}>Press Enter to add tags · Drag to move</span>
+                    <span style={S.statusDot}>
+                        <span style={S.statusDotIndicator} />
+                        {isSaved ? 'Saved' : 'Editing'}
+                    </span>
                 </div>
-            </main>
+
+                {/* SE resize grip visual indicator */}
+                <div style={S.seGrip}>
+                    {[0, 1, 2].map(r => (
+                        <div key={r} style={{ display: 'flex', gap: '2px' }}>
+                            {Array(3 - r).fill(0).map((_, i) => (
+                                <div key={i} style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#94a3b8' }} />
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Saved toast */}
+            {showSavedToast && (
+                <div style={S.toast}>
+                    <CheckIcon />
+                    Note saved!
+                </div>
+            )}
         </div>
     );
 };
