@@ -65,7 +65,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
 
     return (
         <div
-            className={`font-display flex flex-col relative transition-all duration-300 h-full ${isDark ? 'dark' : ''} ${isFocusMode ? 'fixed inset-0 z-[2147483647]' : ''}`}
+            className={`font-display flex flex-col transition-all duration-300 h-full ${isDark ? 'dark' : ''} ${isFocusMode ? 'fixed inset-0 z-[2147483647]' : 'relative'}`}
             style={{
                 backgroundColor: isDark ? '#0F1115' : '#ffffff',
                 color: isDark ? 'white' : '#1e293b'
@@ -73,19 +73,19 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
         >
             {/* Header */}
             <header
-                className="px-8 py-6 flex items-center justify-between select-none border-b border-slate-50 dark:border-white/5 bg-white/50 dark:bg-black/20 backdrop-blur-xl z-20"
+                className={`px-8 py-6 flex items-center justify-between select-none border-b border-slate-50 dark:border-white/5 bg-white/50 dark:bg-black/20 backdrop-blur-xl z-40 transition-all duration-300 ${isFocusMode ? 'absolute top-0 w-full opacity-0 hover:opacity-100 hover:pointer-events-auto pointer-events-none' : 'relative opacity-100'}`}
             >
                 <div className="flex items-center gap-6 flex-shrink-0">
                     <button
                         onClick={onCancel}
-                        className="w-11 h-11 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex-shrink-0 shadow-sm"
+                        className={`w-11 h-11 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex-shrink-0 shadow-sm ${isFocusMode ? 'pointer-events-auto' : ''}`}
                     >
                         <span className="material-symbols-rounded text-slate-500 text-[24px] flex-shrink-0">chevron_left</span>
                     </button>
-                    <span className="text-[18px] font-extrabold text-[#94A3B8] dark:text-white/40 tracking-wider whitespace-nowrap">EDIT NOTE</span>
+                    <span className="text-[18px] font-extrabold text-[#94A3B8] dark:text-white/40 tracking-wider whitespace-nowrap">{initialNote?.id ? 'EDIT NOTE' : 'NEW NOTE'}</span>
                 </div>
 
-                <div className="flex items-center gap-4 flex-shrink-0">
+                <div className={`flex items-center gap-4 flex-shrink-0 ${isFocusMode ? 'pointer-events-auto' : ''}`}>
                     <button onClick={onToggleTheme} className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] dark:hover:text-white transition-colors cursor-pointer flex-shrink-0">
                         <span className="material-symbols-rounded text-[24px] flex-shrink-0">{isDark ? 'dark_mode' : 'light_mode'}</span>
                     </button>
@@ -103,10 +103,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
 
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#0F1115]">
-                <div className={`flex-1 overflow-y-auto px-10 pt-10 pb-32 custom-scrollbar ${isFocusMode ? 'max-w-4xl mx-auto w-full' : ''}`}>
+                <div className={`flex-1 overflow-y-auto px-10 pb-32 custom-scrollbar transition-all duration-500 ${isFocusMode ? 'pt-24 max-w-3xl mx-auto w-full' : 'pt-10'}`}>
 
                     {/* Date and Action Pill */}
-                    <div className="flex items-center justify-between mb-10">
+                    <div className={`flex items-center justify-between transition-all duration-300 ${isFocusMode ? 'mb-16 opacity-0 hover:opacity-100' : 'mb-10 opacity-100'}`}>
                         <span className="text-[#94A3B8] dark:text-white/30 text-[14px] font-bold tracking-[0.1em] whitespace-nowrap">{formattedDate}</span>
 
                         <div className="flex items-center gap-1 bg-[#F8FAFC] dark:bg-white/5 p-1.5 rounded-full border border-slate-100 dark:border-white/5 flex-shrink-0">
@@ -132,9 +132,31 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
                         </div>
                     </div>
 
-                    {/* Primary Content Editor (Big Text) */}
+                    {/* Primary Title Editor (Big Text) */}
                     <textarea
                         className="w-full bg-transparent text-[52px] font-black text-[#1E293B] dark:text-white mb-2 outline-none border-none focus:ring-0 placeholder-slate-200 dark:placeholder-white/5 leading-[1.1] tracking-tighter p-0 resize-none font-display overflow-hidden"
+                        placeholder="Untitled"
+                        value={title}
+                        onChange={(e) => {
+                            setTitle(e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = e.target.scrollHeight + 'px';
+                        }}
+                    />
+
+                    {/* Secondary Title Area (Tag) */}
+                    <div className="flex items-center gap-2 mb-8 group">
+                        <span className="material-symbols-rounded text-[#94A3B8] dark:text-white/20 text-[24px] font-bold flex-shrink-0">tag</span>
+                        <input
+                            type="text"
+                            className="flex-1 bg-transparent text-[22px] font-bold text-[#94A3B8] dark:text-white/30 outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/10 p-0 font-display"
+                            placeholder="Actualize Tags"
+                        />
+                    </div>
+
+                    {/* Main Content Editor */}
+                    <textarea
+                        className="w-full bg-transparent text-[18px] text-[#475569] dark:text-gray-300 outline-none border-none focus:ring-0 placeholder-slate-400 dark:placeholder-slate-500 leading-relaxed p-0 resize-none font-display overflow-hidden min-h-[300px]"
                         placeholder="Type something amazing..."
                         value={content}
                         onChange={(e) => {
@@ -143,23 +165,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
                             e.target.style.height = e.target.scrollHeight + 'px';
                         }}
                     />
-
-                    {/* Secondary Title Area (# Hashtag) */}
-                    <div className="flex items-center gap-2 mb-8 group">
-                        <span className="text-[#94A3B8] dark:text-white/20 text-[22px] font-bold flex-shrink-0">#</span>
-                        <textarea
-                            rows={1}
-                            className="flex-1 bg-transparent text-[22px] font-bold text-[#94A3B8] dark:text-white/30 outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/10 p-0 resize-none font-display overflow-hidden"
-                            placeholder="Actualize Tags"
-                            value={title}
-                            onChange={(e) => {
-                                setTitle(e.target.value);
-                                e.target.style.height = 'auto';
-                                e.target.style.height = e.target.scrollHeight + 'px';
-                            }}
-                        />
-                    </div>
                 </div>
+
+                {/* Floating Mic Button */}
+                <button
+                    className="absolute bottom-10 right-10 w-16 h-16 rounded-full bg-[#6366f1] text-white flex items-center justify-center shadow-[0_10px_25px_-5px_rgba(99,102,241,0.5)] hover:bg-[#4f46e5] active:scale-95 transition-all z-30 cursor-pointer"
+                    title="Voice to Text"
+                >
+                    <span className="material-symbols-rounded text-[28px]">mic</span>
+                </button>
             </main>
 
             {showStatus && (
