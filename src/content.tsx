@@ -188,97 +188,42 @@ async function mountPanel() {
   shadowRoot.style.inset = '0';
   shadow.appendChild(shadowRoot);
 
-  // Tailwind CSS CDN
-  const tailwindLink = document.createElement('link');
-  tailwindLink.rel = 'stylesheet';
-  tailwindLink.href = 'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css';
-  shadow.appendChild(tailwindLink);
+  // NOTE: No external CSS CDN — StickyNotes uses 100% inline styles
 
-  // User provided solution for Shadow DOM and positioning
+  // Minimal Shadow DOM reset — does NOT override position or layout
   const style = document.createElement('style');
   style.textContent = `
-    /* RESET for Shadow DOM */
-    * {
-      margin: 0;
-      padding: 0;
+    /* Base reset for Shadow DOM */
+    *, *::before, *::after {
       box-sizing: border-box;
-      -webkit-font-smoothing: auto !important;
-      -moz-osx-font-smoothing: auto !important;
     }
-    
-    /* Force Material Icons to load */
-    @font-face {
-      font-family: 'Material Symbols Rounded';
-      font-style: normal;
-      font-weight: 100 700;
-      src: url(https://fonts.gstatic.com/s/materialsymbolsrounded/v168/sykg-zNym6YjUruM-QrEh7-nyTnjDwKNJ_190Fjzag.woff2) format('woff2');
-    }
-    
-    .material-symbols-rounded {
-      font-family: 'Material Symbols Rounded';
-      font-weight: normal;
-      font-style: normal;
-      font-size: 24px;
-      line-height: 1;
-      letter-spacing: normal;
-      text-transform: none;
-      display: inline-block;
-      white-space: nowrap;
-      word-wrap: normal;
-      direction: ltr;
-    }
-    
-    /* Ensure buttons are visible and stacked correctly */
-    button {
-      position: relative !important;
-      z-index: 10 !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      min-width: 40px !important;
-      min-height: 40px !important;
-    }
-    
-    /* Fix overlapping */
-    div, header, main, span, button {
-      position: relative !important;
-    }
-    
-    /* Specific fix for StickyNotes layout */
+
+    /* Ensure the panel itself stays fixed */
     #kuviyam-panel-container > div {
       position: fixed !important;
       z-index: 2147483647 !important;
       pointer-events: auto !important;
     }
-    
-    /* Force visibility */
-    header {
-      display: flex !important;
-      align-items: center !important;
-      justify-content: space-between !important;
-      gap: 8px !important;
-    }
-    
-    /* Make sure icons display */
-    .material-symbols-rounded {
-      display: inline-block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-    }
 
-    /* Custom scrollbar */
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
+    /* Scrollbar inside note body */
+    ::-webkit-scrollbar {
+      width: 5px;
     }
-    .custom-scrollbar::-webkit-scrollbar-track {
+    ::-webkit-scrollbar-track {
       background: transparent;
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #d1d5db;
+    ::-webkit-scrollbar-thumb {
+      background: rgba(99,102,241,0.3);
       border-radius: 3px;
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #9ca3af;
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(99,102,241,0.5);
+    }
+
+    /* Animations used by StickyNotes */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
   `;
   shadow.appendChild(style);
@@ -294,7 +239,10 @@ async function mountPanel() {
   reactRoot.render(
     <React.StrictMode>
       <StickyNotes onClose={() => {
-        shadowRoot.style.display = 'none';
+        if (shadowRoot) {
+          const container = shadowRoot.querySelector('#kuviyam-panel-container');
+          if (container instanceof HTMLElement) container.style.display = 'none';
+        }
         storage.getPanelLayout().then(layout => {
           storage.savePanelLayout({ ...layout, isOpen: false });
         });
@@ -312,7 +260,7 @@ storage.getPanelLayout().then(layout => {
   }
 });
 
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'KUV_OPEN_PANEL') {
     mountPanel();
     const root = document.getElementById(id);
@@ -320,5 +268,7 @@ chrome.runtime.onMessage.addListener((message) => {
       const container = root.shadowRoot.querySelector('#kuviyam-panel-container');
       if (container instanceof HTMLElement) container.style.display = 'block';
     }
+    sendResponse({ success: true });
   }
+  return true; // Keeps the message channel open for the async response if needed
 });
