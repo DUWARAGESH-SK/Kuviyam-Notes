@@ -220,7 +220,7 @@ function App() {
   if (view === 'folders') {
     return (
       <div className="w-[450px] min-h-[884px] font-display bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 overflow-x-hidden relative flex flex-col">
-        <FoldersPanel />
+        <FoldersPanel onEditNote={handleEditNote} />
 
         <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl ios-tab-shadow px-6 pb-8 pt-4 z-50">
           <div className="max-w-md mx-auto relative flex justify-between items-center">
