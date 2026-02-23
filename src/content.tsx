@@ -240,8 +240,7 @@ async function mountPanel() {
     <React.StrictMode>
       <StickyNotes onClose={() => {
         if (shadowRoot) {
-          const container = shadowRoot.querySelector('#kuviyam-panel-container');
-          if (container instanceof HTMLElement) container.style.display = 'none';
+          shadowRoot.style.display = 'none';
         }
         storage.getPanelLayout().then(layout => {
           storage.savePanelLayout({ ...layout, isOpen: false });
