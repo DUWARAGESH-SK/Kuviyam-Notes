@@ -65,8 +65,9 @@ function App() {
       }
 
       const url = tab.url || "";
-      if (url.startsWith("edge://") || url.startsWith("chrome://")) {
-        setStatusMsg("Restricted Page.");
+      if (url.startsWith("edge://") || url.startsWith("chrome://") || url.startsWith("about:") || url.startsWith("chrome-extension:") || url.includes("chrome.google.com/webstore")) {
+        setStatusMsg("Can't open on this page.");
+        setTimeout(() => setStatusMsg(""), 3000);
         return;
       }
 
@@ -76,20 +77,8 @@ function App() {
         await chrome.tabs.sendMessage(tabId, { type: "KUV_OPEN_PANEL" });
         window.close();
       } catch (err) {
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId: tabId },
-            files: ['src/content.tsx']
-          });
-
-          setTimeout(async () => {
-            await chrome.tabs.sendMessage(tabId, { type: "KUV_OPEN_PANEL" });
-            window.close();
-          }, 500);
-
-        } catch (injectErr) {
-          setStatusMsg("Failed. Refresh Page.");
-        }
+        setStatusMsg("Refresh this page first! (F5)");
+        setTimeout(() => setStatusMsg(""), 3000);
       }
 
     } catch (e) {
