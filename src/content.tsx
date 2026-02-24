@@ -260,12 +260,18 @@ storage.getPanelLayout().then(layout => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'KUV_OPEN_PANEL') {
+  if (message.type === 'KUV_OPEN_PANEL' || message.type === 'KUV_TOGGLE_PANEL') {
     mountPanel();
     const root = document.getElementById(id);
     if (root && root.shadowRoot) {
-      const container = root.shadowRoot.querySelector('#kuviyam-panel-container');
-      if (container instanceof HTMLElement) container.style.display = 'block';
+      const container = root.shadowRoot.querySelector('#kuviyam-panel-container') as HTMLElement;
+      if (container) {
+        if (message.type === 'KUV_TOGGLE_PANEL') {
+          container.style.display = container.style.display === 'none' ? 'block' : 'none';
+        } else {
+          container.style.display = 'block';
+        }
+      }
     }
     sendResponse({ success: true });
   }
