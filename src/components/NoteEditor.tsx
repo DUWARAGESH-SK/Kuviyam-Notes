@@ -14,6 +14,8 @@ interface NoteEditorProps {
 export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onCancel, isDark, onToggleTheme }) => {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [tags, setTags] = useState<string[]>([]);
+    const [tagInput, setTagInput] = useState('');
     const [isPinned, setIsPinned] = useState(false);
     const [showStatus, setShowStatus] = useState<string | null>(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
@@ -29,16 +31,45 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
             setContent(initialNote.content || '');
             setIsPinned(initialNote.pinned || false);
             setSelectedFolderIds(initialNote.folderIds || []);
+            setTags(initialNote.tags || []);
         }
     }, [initialNote]);
+
+    const addTag = () => {
+        const trimmed = tagInput.trim().replace(/^#/, '');
+        if (trimmed && !tags.includes(trimmed)) {
+            setTags([...tags, trimmed]);
+        }
+        setTagInput('');
+    };
+
+    const removeTag = (tagToRemove: string) => {
+        setTags(tags.filter(t => t !== tagToRemove));
+    };
+
+    const handleTagKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            addTag();
+        } else if (e.key === 'Backspace' && !tagInput && tags.length) {
+            setTags(tags.slice(0, -1));
+        }
+    };
 
     const handleSave = () => {
         if (!title.trim() && !content.trim()) return;
 
+        // Capture any pending tag input that wasn't 'entered'
+        let finalTags = [...tags];
+        const pendingTag = tagInput.trim().replace(/^#/, '');
+        if (pendingTag && !finalTags.includes(pendingTag)) {
+            finalTags.push(pendingTag);
+        }
+
         const draft: NoteDraft = {
             title: title || 'Untitled',
             content,
-            tags: [], // Following StickyNotes pattern
+            tags: finalTags,
             pinned: isPinned,
             domain: initialNote?.domain || window.location.hostname,
             url: initialNote?.url || window.location.href,
@@ -147,11 +178,25 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
                     {/* Secondary Title Area (Tag) */}
                     <div className="flex items-center gap-2 mb-8 group">
                         <span className="material-symbols-rounded text-[#94A3B8] dark:text-white/20 text-[24px] font-bold flex-shrink-0">tag</span>
-                        <input
-                            type="text"
-                            className="flex-1 bg-transparent text-[22px] font-bold text-[#94A3B8] dark:text-white/30 outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/10 p-0 font-display"
-                            placeholder="Actualize Tags"
-                        />
+                        <div className="flex flex-wrap items-center gap-2 flex-1">
+                            {tags.map((tag) => (
+                                <span key={tag} className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#EEF2FF] dark:bg-indigo-500/10 border border-[#E0E7FF] dark:border-indigo-500/20 rounded-xl text-[#4F46E5] dark:text-indigo-400 font-bold text-[14px]">
+                                    {tag}
+                                    <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors flex items-center justify-center">
+                                        <span className="material-symbols-rounded text-[16px]">close</span>
+                                    </button>
+                                </span>
+                            ))}
+                            <input
+                                type="text"
+                                className="flex-1 bg-transparent text-[22px] font-bold text-[#94A3B8] dark:text-white/30 outline-none border-none focus:ring-0 placeholder-slate-300 dark:placeholder-white/10 p-0 font-display min-w-[150px]"
+                                placeholder={tags.length === 0 ? "Add tags (press Enter)" : "Add more tags..."}
+                                value={tagInput}
+                                onChange={(e) => setTagInput(e.target.value)}
+                                onKeyDown={handleTagKeyDown}
+                                onBlur={() => tagInput.trim() && addTag()}
+                            />
+                        </div>
                     </div>
 
                     {/* Main Content Editor */}
@@ -167,13 +212,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
                     />
                 </div>
 
-                {/* Floating Mic Button */}
-                <button
-                    className="absolute bottom-10 right-10 w-16 h-16 rounded-full bg-[#6366f1] text-white flex items-center justify-center shadow-[0_10px_25px_-5px_rgba(99,102,241,0.5)] hover:bg-[#4f46e5] active:scale-95 transition-all z-30 cursor-pointer"
-                    title="Voice to Text"
-                >
-                    <span className="material-symbols-rounded text-[28px]">mic</span>
-                </button>
+
             </main>
 
             {showStatus && (
