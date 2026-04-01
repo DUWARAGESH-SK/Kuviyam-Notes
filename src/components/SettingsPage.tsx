@@ -221,7 +221,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onDeleteAll }) => {
             <div className="w-[30%] border-r border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-black/30 flex flex-col">
                 {/* Header */}
                 <div className="px-6 py-8 border-b border-slate-200 dark:border-white/5">
-                    <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">Settings</h2>
+                    <div className="flex items-center gap-4 mb-2">
+                        <img src="/logo.png" alt="Kuviyam" className="w-12 h-12 rounded-xl shadow-md border border-slate-200/50 dark:border-white/10 object-cover" />
+                        <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight pt-1">Settings</h2>
+                    </div>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your preferences</p>
                 </div>
 
