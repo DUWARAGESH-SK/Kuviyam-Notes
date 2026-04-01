@@ -320,10 +320,10 @@ function App() {
         </div>
 
         {/* Header */}
-        <header className="relative flex justify-between items-start mb-8 z-10">
-          <div>
-            <p className="text-rose-500 font-bold text-sm mb-1 tracking-wide">Good Morning!</p>
-            <h1 className="text-5xl font-extrabold text-[#1E293B] dark:text-white tracking-tight title-embossed">Kuviyam</h1>
+        <header className="relative flex justify-between items-center mb-8 z-10 mt-2">
+          <div className="flex items-center gap-4">
+            <img src="/logo.png" alt="Kuviyam Logo" className="w-16 h-16 rounded-2xl shadow-md border border-slate-100 dark:border-slate-800 object-cover" />
+            <h1 className="text-5xl font-extrabold text-[#1E293B] dark:text-white tracking-tight title-embossed pt-1">Kuviyam</h1>
           </div>
           <div className="flex gap-2">
             <button
