@@ -112,6 +112,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
     const [folderIds, setFolderIds] = useState<string[]>([]);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
+    const [isLinkedToDomain, setIsLinkedToDomain] = useState(true);
 
     // Hover states
     const [hoverClose, setHoverClose] = useState(false);
@@ -165,6 +166,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                         setTags(draft.tags || []);
                         setIsPinned(draft.pinned || false);
                         setFolderIds(draft.folderIds || []);
+                        setIsLinkedToDomain(draft.isLinkedToDomain !== false);
                         draftTimestamp.current = draft.updatedAt || 0;
                     }
                 });
@@ -179,6 +181,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                         setTags(draft.tags || []);
                         setIsPinned(draft.pinned || false);
                         setFolderIds(draft.folderIds || []);
+                        setIsLinkedToDomain(draft.isLinkedToDomain !== false);
                     }
                 } catch (e) {
                     // ignore sessionStorage limits
@@ -216,6 +219,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                     setTags(newDraft.tags || []);
                     setIsPinned(newDraft.pinned || false);
                     setFolderIds(newDraft.folderIds || []);
+                    setIsLinkedToDomain(newDraft.isLinkedToDomain !== false);
                 }
             }
         };
@@ -231,7 +235,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                 const now = Date.now();
                 draftTimestamp.current = now; // prevent bouncing back our own update
                 
-                const draftObj = { title, content, tags, pinned: isPinned, folderIds, updatedAt: now };
+                const draftObj = { title, content, tags, pinned: isPinned, folderIds, isLinkedToDomain, updatedAt: now };
                 
                 if (stickMode === 'global') {
                     chrome.storage.local.set({ panelDraft: draftObj });
@@ -241,7 +245,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
             }
         }, 300); // 300ms for swift cross-tab visibility
         return () => clearTimeout(timer);
-    }, [title, content, tags, isPinned, folderIds, isSaved, stickMode]);
+    }, [title, content, tags, isPinned, folderIds, isLinkedToDomain, isSaved, stickMode]);
 
     // --- FORMATTED DATE ---
     const formattedDate = new Date().toLocaleDateString('en-GB', {
@@ -251,7 +255,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
         year: 'numeric'
     });
 
-    const domain = (() => {
+    const currentDomain = (() => {
         try { return window.location.hostname || 'kuviyam'; } catch { return 'kuviyam'; }
     })();
 
@@ -338,14 +342,14 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
             content,
             tags: finalTags,
             pinned: isPinned,
-            domain,
-            url: (() => { try { return window.location.href; } catch { return ''; } })(),
-            favicon: `https://www.google.com/s2/favicons?domain=${domain}&sz=32`,
+            domain: isLinkedToDomain ? currentDomain : undefined,
+            url: isLinkedToDomain ? (() => { try { return window.location.href; } catch { return ''; } })() : undefined,
+            favicon: isLinkedToDomain ? `https://www.google.com/s2/favicons?domain=${currentDomain}&sz=32` : undefined,
             folderIds: folderIds
         };
         await storage.createNote(newNote);
         if (stickMode === 'global') {
-            chrome.storage.local.set({ panelDraft: { title: '', content: '', tags: [], pinned: false, folderIds: [], updatedAt: Date.now() } });
+            chrome.storage.local.set({ panelDraft: { title: '', content: '', tags: [], pinned: false, folderIds: [], isLinkedToDomain: true, updatedAt: Date.now() } });
         } else {
             try { window.sessionStorage.removeItem('kuviyam_tab_draft'); } catch (e) {}
         }
@@ -357,6 +361,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
         setTagInput('');
         setIsPinned(false);
         setFolderIds([]);
+        setIsLinkedToDomain(true);
         setTimeout(() => setShowSavedToast(false), 2500);
     };
 
@@ -1074,14 +1079,37 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ onClose }) => {
                     {/* Domain pills row — current site + any pinned linked sites */}
                     <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px', alignItems: 'center', marginBottom: '18px' }}>
                         {/* Current site pill */}
-                        <div style={S.domainPill}>
-                            <LinkIcon />
-                            {domain}
-                        </div>
+                        {isLinkedToDomain ? (
+                            <div style={S.domainPill}>
+                                <LinkIcon />
+                                {currentDomain}
+                                <span 
+                                    onClick={() => { setIsLinkedToDomain(false); setIsSaved(false); }}
+                                    style={{ cursor: 'pointer', marginLeft: '2px', padding: '0 2px', display: 'flex', alignItems: 'center', opacity: 0.7 }}
+                                    title="Unlink from site"
+                                    onMouseEnter={(e) => (e.target as HTMLElement).style.opacity = '1'}
+                                    onMouseLeave={(e) => (e.target as HTMLElement).style.opacity = '0.7'}
+                                >
+                                    <CloseIcon />
+                                </span>
+                            </div>
+                        ) : (
+                            <div 
+                                onClick={() => { setIsLinkedToDomain(true); setIsSaved(false); }}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '9999px', fontSize: '10px', fontWeight: '500', width: 'fit-content',
+                                    color: isDarkMode ? '#94a3b8' : '#64748b', cursor: 'pointer', background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                                    border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)'
+                                }}
+                                title="Link to current site"
+                            >
+                                <span style={{fontSize: '12px', fontWeight: 'bold'}}>🔗</span> Not Linked
+                            </div>
+                        )}
 
                         {/* Pinned linked-site pills (global mode only, exclude current domain) */}
                         {stickMode === 'global' && allowedDomains
-                            .filter(d => d !== domain)
+                            .filter(d => d !== currentDomain)
                             .map(d => (
                                 <div
                                     key={d}
