@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 import { storage } from '../utils/storage';
-import type { Note, Folder } from '../types';
+import type { Note, Folder, AppSettings } from '../types';
 
 interface SettingsPageProps {
     onDeleteAll?: () => void;
 }
 
-type Tab = 'sync' | 'download' | 'delete' | 'websites';
+type Tab = 'general' | 'download' | 'delete' | 'websites';
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onDeleteAll }) => {
-    const [activeTab, setActiveTab] = useState<Tab>('sync');
+    const [activeTab, setActiveTab] = useState<Tab>('general');
     const [notes, setNotes] = useState<Note[]>([]);
     const [folders, setFolders] = useState<Folder[]>([]);
+    const [stickMode, setStickMode] = useState<'global' | 'per-tab'>('global');
 
     // Download State
     const [selectedDownloadType, setSelectedDownloadType] = useState<'notes' | 'folders'>('notes');
@@ -40,8 +41,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onDeleteAll }) => {
     const loadData = async () => {
         const allNotes = await storage.getNotes();
         const allFolders = await storage.getFolders();
+        const settings = await storage.getSettings();
+        
         setNotes(allNotes);
         setFolders(allFolders);
+        setStickMode(settings.stickMode);
 
         // Process Websites
         const sites = new Map<string, { domain: string, url: string, count: number, favicon?: string }>();
@@ -216,96 +220,155 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onDeleteAll }) => {
     );
 
     return (
-        <div className="w-full h-full flex bg-white dark:bg-background-dark text-slate-800 dark:text-slate-100 font-display">
-            {/* LEFT PANEL - 30% Compact Options */}
-            <div className="w-[30%] border-r border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-black/30 flex flex-col">
-                {/* Header */}
-                <div className="px-6 py-8 border-b border-slate-200 dark:border-white/5">
-                    <div className="flex items-center gap-4 mb-2">
-                        <img src="/logo.png" alt="Kuviyam" className="w-12 h-12 rounded-xl shadow-md border border-slate-200/50 dark:border-white/10 object-cover" />
-                        <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight pt-1">Settings</h2>
-                    </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your preferences</p>
+        <div className="w-full h-full flex flex-col bg-white dark:bg-background-dark text-slate-800 dark:text-slate-100 font-display">
+            {/* TOP HEADER & TABS */}
+            <div className="px-6 pt-10 pb-4 border-b border-slate-200 dark:border-white/5 shadow-sm z-10 bg-white/50 dark:bg-black/20 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-6">
+                    <img src="/logo.png" alt="Kuviyam" className="w-10 h-10 rounded-xl shadow-sm border border-slate-200/50 dark:border-white/10 object-cover shrink-0" />
+                    <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight pt-1">Settings</h2>
                 </div>
 
-                {/* Options List */}
-                <div className="flex-1 p-3 space-y-1">
+                {/* Horizontal Tabs List */}
+                <div className="flex overflow-x-auto custom-scrollbar gap-2 pb-2">
                     {[
-                        { id: 'sync', icon: 'sync', label: 'Sync', danger: false },
-                        { id: 'download', icon: 'download', label: 'Download', danger: false },
-                        { id: 'delete', icon: 'delete', label: 'Delete', danger: true },
-                        { id: 'websites', icon: 'language', label: 'Website List', danger: false }
+                        { id: 'general', icon: 'settings', label: 'General' },
+                        { id: 'download', icon: 'download', label: 'Download' },
+                        { id: 'delete', icon: 'delete', label: 'Delete' },
+                        { id: 'websites', icon: 'language', label: 'Websites' }
                     ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as Tab)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === tab.id
-                                ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
-                                : tab.danger
-                                    ? 'text-rose-500 hover:bg-rose-500/10'
-                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-bold text-sm whitespace-nowrap shrink-0 ${activeTab === tab.id
+                                ? 'bg-indigo-500 text-white shadow-md'
+                                : tab.id === 'delete'
+                                    ? 'text-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20'
+                                    : 'text-slate-600 dark:text-slate-400 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10'
                                 }`}
                         >
-                            <span className={`material-symbols-rounded text-[20px] ${tab.danger && activeTab !== tab.id ? 'text-rose-500' : ''}`}>{tab.icon}</span>
+                            <span className="material-symbols-rounded text-[18px]">{tab.icon}</span>
                             {tab.label}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* RIGHT PANEL - 70% Expanded Content */}
-            <div className="flex-1 flex flex-col bg-white dark:bg-background-dark overflow-y-auto custom-scrollbar">
-                <div className="p-8 max-w-4xl mx-auto w-full">
+            {/* CONTENT PANEL */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar pb-32">
+                <div className="p-5 max-w-4xl mx-auto w-full">
 
-                    {/* 1. SYNC TAB */}
-                    {activeTab === 'sync' && (
+                    {/* 1. GENERAL TAB */}
+                    {activeTab === 'general' && (
                         <div className="space-y-6">
-                            <div className="flex items-center gap-4 mb-8">
-                                <div className="w-16 h-16 rounded-2xl bg-indigo-500/20 flex items-center justify-center">
-                                    <span className="material-symbols-rounded text-3xl text-indigo-500">cloud_sync</span>
+                            
+                            {/* Panel Behavior Section */}
+                            <div>
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-rounded text-xl text-indigo-500">picture_in_picture</span>
+                                    </div>
+                                    <h3 className="text-xl font-black text-slate-800 dark:text-white">Panel Behavior</h3>
                                 </div>
-                                <div>
-                                    <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-1">Sync Status</h3>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">Your data synchronization settings</p>
+                                
+                                <div className="grid grid-cols-1 gap-3">
+                                    <button 
+                                        onClick={async () => {
+                                            setStickMode('global');
+                                            await storage.saveSettings({ stickMode: 'global' });
+                                        }}
+                                        className={`px-5 py-4 rounded-2xl border text-left transition-all ${stickMode === 'global' ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-500 shadow-sm' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-indigo-300 dark:hover:border-indigo-500/50'}`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 shrink-0 ${stickMode === 'global' ? 'border-indigo-500' : 'border-slate-300 dark:border-slate-600'}`}>
+                                                {stickMode === 'global' && <div className="w-3 h-3 bg-indigo-500 rounded-full" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className={`text-base font-bold mb-1 ${stickMode === 'global' ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>Global Stick (Stick Anywhere)</h4>
+                                                <p className="text-slate-500 dark:text-slate-400 text-xs">The panel follows you everywhere. If you open it on one tab, it instantly mirrors exactly on all other tabs.</p>
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    <button 
+                                        onClick={async () => {
+                                            setStickMode('per-tab');
+                                            await storage.saveSettings({ stickMode: 'per-tab' });
+                                        }}
+                                        className={`px-5 py-4 rounded-2xl border text-left transition-all ${stickMode === 'per-tab' ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-500 shadow-sm' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-indigo-300 dark:hover:border-indigo-500/50'}`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 shrink-0 ${stickMode === 'per-tab' ? 'border-indigo-500' : 'border-slate-300 dark:border-slate-600'}`}>
+                                                {stickMode === 'per-tab' && <div className="w-3 h-3 bg-indigo-500 rounded-full" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className={`text-base font-bold mb-1 ${stickMode === 'per-tab' ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>Local Stick (Per Tab)</h4>
+                                                <p className="text-slate-500 dark:text-slate-400 text-xs">The panel acts independently. Opening it in one tab won't affect it in others.</p>
+                                            </div>
+                                        </div>
+                                    </button>
                                 </div>
                             </div>
-
-                            <div className="p-6 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
-                                <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0">
-                                        <span className="material-symbols-rounded text-2xl text-indigo-500">check_circle</span>
+                            
+                            {/* Sync Status Section */}
+                            <div className="mt-8 border-t border-slate-100 dark:border-white/5 pt-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-rounded text-xl text-slate-500 dark:text-slate-400">cloud_sync</span>
                                     </div>
-                                    <div className="flex-1">
-                                        <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Sync is Active</h4>
-                                        <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-3">
-                                            Your notes are automatically synced to your local storage. All changes are saved in real-time.
-                                        </p>
-                                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-500">
-                                            <span className="material-symbols-rounded text-[14px]">schedule</span>
-                                            <span>Last synced: Just now</span>
+                                    <h3 className="text-xl font-black text-slate-800 dark:text-white">Sync Status</h3>
+                                </div>
+
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="px-5 py-4 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0 relative">
+                                            <span className="absolute w-full h-full bg-indigo-400 rounded-full animate-ping opacity-20"></span>
+                                            <span className="material-symbols-rounded text-lg text-indigo-600 dark:text-indigo-400 z-10">check_circle</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <h4 className="text-base font-bold text-slate-800 dark:text-white truncate">Sync Active</h4>
+                                                <span className="flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
+                                                    <span className="material-symbols-rounded text-[12px]">schedule</span>
+                                                    Just now
+                                                </span>
+                                            </div>
+                                            <p className="text-slate-600 dark:text-slate-400 text-xs truncate">
+                                                Auto-sync enabled to local storage.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="px-5 py-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center shrink-0">
+                                            <span className="material-symbols-rounded text-lg text-slate-500 dark:text-slate-400">devices</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h4 className="text-base font-bold text-slate-800 dark:text-white truncate">Cross-Device</h4>
+                                                <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Soon</span>
+                                            </div>
+                                            <p className="text-slate-500 dark:text-slate-500 text-xs truncate">
+                                                Available in a future update.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-
-                            <div className="p-6 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                                <h4 className="text-sm font-bold text-slate-600 dark:text-slate-400 mb-3 uppercase tracking-wider">Coming Soon</h4>
-                                <p className="text-slate-500 dark:text-slate-500 text-sm">Cloud sync across devices will be available in a future update.</p>
                             </div>
                         </div>
                     )}
 
                     {/* 2. DOWNLOAD TAB */}
                     {activeTab === 'download' && (
-                        <div className="space-y-6 h-full flex flex-col">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-16 h-16 rounded-2xl bg-blue-500/20 flex items-center justify-center">
-                                    <span className="material-symbols-rounded text-3xl text-blue-500">download</span>
+                        <div className="space-y-4 h-full flex flex-col">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-rounded text-xl text-blue-500">download</span>
                                 </div>
-                                <div>
-                                    <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-1">Download Your Data</h3>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">Export notes and folders as files</p>
-                                </div>
+                                <h3 className="text-xl font-black text-slate-800 dark:text-white">Download Data</h3>
                             </div>
 
                             {downloadItems.length === 0 ? (
@@ -402,15 +465,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onDeleteAll }) => {
 
                     {/* 3. DELETE TAB */}
                     {activeTab === 'delete' && (
-                        <div className="space-y-6 h-full flex flex-col">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-16 h-16 rounded-2xl bg-rose-500/20 flex items-center justify-center">
-                                    <span className="material-symbols-rounded text-3xl text-rose-500">delete</span>
+                        <div className="space-y-4 h-full flex flex-col">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-rounded text-xl text-rose-500">delete</span>
                                 </div>
-                                <div>
-                                    <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-1">Delete Your Data</h3>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">Permanently remove notes and folders</p>
-                                </div>
+                                <h3 className="text-xl font-black text-slate-800 dark:text-white">Delete Data</h3>
                             </div>
 
                             {deleteItems.length === 0 ? (
@@ -507,15 +567,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onDeleteAll }) => {
 
                     {/* 4. WEBSITES TAB */}
                     {activeTab === 'websites' && (
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-16 h-16 rounded-2xl bg-teal-500/20 flex items-center justify-center">
-                                    <span className="material-symbols-rounded text-3xl text-teal-500">language</span>
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-rounded text-xl text-teal-500">language</span>
                                 </div>
-                                <div>
-                                    <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-1">Linked Websites</h3>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">All websites connected to your notes</p>
-                                </div>
+                                <h3 className="text-xl font-black text-slate-800 dark:text-white">Linked Websites</h3>
                             </div>
 
                             <div className="space-y-2">
