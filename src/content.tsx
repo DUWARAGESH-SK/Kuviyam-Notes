@@ -174,11 +174,13 @@ async function mountPanel() {
   if (panelMounted) return;
 
   let root = document.getElementById(id);
-  if (!root) {
-    root = document.createElement('div');
-    root.id = id;
-    document.body.appendChild(root);
+  if (root) {
+    root.remove(); // Remove old host to prevent "already hosts a shadow tree" error from previous injections
   }
+  
+  root = document.createElement('div');
+  root.id = id;
+  document.body.appendChild(root);
 
   const shadow = root.attachShadow({ mode: 'open' });
 
@@ -277,16 +279,14 @@ const claimGlobalInstance = () => {
 // Setup focus listener to "summon" physical note
 window.addEventListener('focus', claimGlobalInstance);
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && document.hasFocus()) {
+    if (document.visibilityState === 'visible') {
         claimGlobalInstance();
     }
 });
 
 chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'KUV_TAB_ACTIVATED') {
-        if (document.hasFocus() || document.visibilityState === 'visible') {
-            claimGlobalInstance();
-        }
+        claimGlobalInstance();
     }
 });
 
@@ -326,7 +326,7 @@ const init = async () => {
 
   if (currentStickMode === 'global') {
     // If the tab is already focused when script loads (e.g. new tab or reload), claim it immediately.
-    if (document.hasFocus()) {
+    if (document.visibilityState === 'visible') {
         claimGlobalInstance();
     }
     // Determine visibility based on active tab state and history
