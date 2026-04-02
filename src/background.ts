@@ -1,12 +1,12 @@
 import { storage } from './utils/storage';
 import type { NoteDraft } from './types';
 
-console.log("Kuviyam Background Script Loaded");
+console.log("Kuviyam Notes Background Script Loaded");
 
 chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
         id: "save-to-kuviyam",
-        title: "Save to Kuviyam",
+        title: "Save to Kuviyam Notes",
         contexts: ["selection"]
     });
 });
@@ -41,11 +41,78 @@ chrome.commands.onCommand.addListener((command) => {
                 // Check if we can sendMessage (skip restricted pages check here, let content script handle or fail silently)
                 chrome.tabs.sendMessage(tabId, {
                     type: "KUV_TOGGLE_PANEL"
-                }).catch(() => {
-                    // Content script might not be loaded on this tab (e.g. edge://)
-                    console.log("Could not send toggle command to tab", tabId);
+                }).catch(async () => {
+                    // Content script might not be loaded on this tab (e.g. pre-opened tab)
+                    try {
+                        const manifest = chrome.runtime.getManifest();
+                        const contentScripts = manifest.content_scripts?.[0];
+                        if (contentScripts && contentScripts.js) {
+                            await chrome.scripting.executeScript({
+                                target: { tabId },
+                                files: contentScripts.js
+                            });
+                            if (contentScripts.css) {
+                                await chrome.scripting.insertCSS({
+                                    target: { tabId },
+                                    files: contentScripts.css
+                                });
+                            }
+                            setTimeout(() => {
+                                chrome.tabs.sendMessage(tabId, { type: "KUV_TOGGLE_PANEL" }).catch(() => {});
+                            }, 200);
+                        }
+                    } catch (e) {
+                         console.log("Could not dynamically inject or send toggle command to tab", tabId);
+                    }
                 });
             }
         });
+    }
+});
+    }
+});
+
+const ensureScriptInjectedAndActivate = async (tabId: number) => {
+    try {
+        const settings = await storage.getSettings();
+        if (settings.stickMode !== 'global') return;
+        
+        const layout = await storage.getPanelLayout();
+        if (!layout.isOpen) return;
+
+        chrome.tabs.sendMessage(tabId, { type: "KUV_TAB_ACTIVATED" }).catch(async () => {
+            // Content script might not be loaded on this tab (e.g. pre-opened tab)
+            try {
+                const manifest = chrome.runtime.getManifest();
+                const contentScripts = manifest.content_scripts?.[0];
+                if (contentScripts && contentScripts.js) {
+                    await chrome.scripting.executeScript({
+                        target: { tabId },
+                        files: contentScripts.js
+                    });
+                    if (contentScripts.css) {
+                        await chrome.scripting.insertCSS({
+                            target: { tabId },
+                            files: contentScripts.css
+                        });
+                    }
+                    setTimeout(() => {
+                        chrome.tabs.sendMessage(tabId, { type: "KUV_TAB_ACTIVATED" }).catch(() => {});
+                    }, 200);
+                }
+            } catch (e) {
+                console.log("Could not dynamically inject on tab switch", tabId);
+            }
+        });
+    } catch(e) {}
+};
+
+chrome.tabs.onActivated.addListener((activeInfo) => {
+    ensureScriptInjectedAndActivate(activeInfo.tabId);
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.status === 'complete') {
+        ensureScriptInjectedAndActivate(tabId);
     }
 });
