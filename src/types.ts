@@ -32,3 +32,7 @@ export interface Folder {
     itemCount: number;
     parentId?: string;
 }
+
+export interface AppSettings {
+    stickMode: 'global' | 'per-tab';
+}
