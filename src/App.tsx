@@ -18,6 +18,7 @@ function App() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedDomainFilter, setSelectedDomainFilter] = useState<string | null>(null);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
 
   // Folder Selection Modal State
@@ -171,7 +172,8 @@ function App() {
       n.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
     const matchesTag = selectedTag ? n.tags.includes(selectedTag) : true;
     const matchesView = view === 'favorites' ? n.pinned : true;
-    return matchesSearch && matchesTag && matchesView;
+    const matchesDomain = selectedDomainFilter ? n.domain === selectedDomainFilter : true;
+    return matchesSearch && matchesTag && matchesView && matchesDomain;
   });
 
   const handleCreateNote = async () => {
@@ -311,7 +313,10 @@ function App() {
   if (view === 'settings') {
     return (
       <div className="w-[450px] min-h-[884px] font-display bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 overflow-x-hidden relative flex flex-col">
-        <SettingsPage onDeleteAll={handleDeleteAll} />
+        <SettingsPage onDeleteAll={handleDeleteAll} onNavigateToNotes={(domain: string) => {
+          setSelectedDomainFilter(domain);
+          setView('list');
+        }} />
 
         <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl ios-tab-shadow px-6 pb-8 pt-4 z-50">
           <div className="max-w-md mx-auto relative flex justify-between items-center">
@@ -410,25 +415,43 @@ function App() {
         </div>
 
         {/* Tag Filters */}
-        <TagBar
-          tags={topTags}
-          selectedTag={selectedTag}
-          onTagSelect={setSelectedTag}
-          onShowAll={() => setIsTagModalOpen(true)}
-        />
+        {!selectedDomainFilter && (
+          <TagBar
+            tags={topTags}
+            selectedTag={selectedTag}
+            onTagSelect={setSelectedTag}
+            onShowAll={() => setIsTagModalOpen(true)}
+          />
+        )}
 
         {/* Recent Notes */}
         <div className="mb-6 flex justify-between items-center px-1">
           <h2 className="text-xl font-extrabold text-[#1E293B] dark:text-white">
-            {view === 'favorites' ? 'Favorite Notes' : 'Recent Notes'}
+            {selectedDomainFilter ? (
+               <span className="flex items-center gap-2">
+                   <span className="material-symbols-rounded text-indigo-500">public</span>
+                   Notes for {selectedDomainFilter}
+               </span>
+            ) : view === 'favorites' ? 'Favorite Notes' : 'Recent Notes'}
           </h2>
-          <button className="text-slate-400 font-bold text-[10px] tracking-widest uppercase" onClick={() => { }}>See All</button>
+          {selectedDomainFilter ? (
+             <button
+               className="px-3 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full text-xs font-bold transition-colors flex items-center gap-1"
+               onClick={() => setSelectedDomainFilter(null)}
+             >
+               <span className="material-symbols-rounded text-[14px]">close</span>
+               Clear Find
+             </button>
+          ) : (
+             <button className="text-slate-400 font-bold text-[10px] tracking-widest uppercase hover:text-indigo-500 transition-colors" onClick={() => { }}>See All</button>
+          )}
         </div>
 
         <div className="space-y-4">
           {filteredNotes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-slate-400">
-              <p>No notes found.</p>
+            <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+              <span className="material-symbols-rounded text-5xl mb-3 opacity-50">search_off</span>
+              <p className="font-bold">No notes found.</p>
             </div>
           ) : (
             filteredNotes.map((note, index) => (
