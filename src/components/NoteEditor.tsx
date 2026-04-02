@@ -148,9 +148,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onSave, onC
                             <button onClick={() => setIsFolderModalOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-full text-[#94A3B8] hover:text-slate-600 dark:hover:text-white transition-colors flex-shrink-0">
                                 <span className="material-symbols-rounded text-[22px] flex-shrink-0">create_new_folder</span>
                             </button>
-                            <button className="w-10 h-10 flex items-center justify-center rounded-full text-[#94A3B8] hover:text-slate-600 dark:hover:text-white transition-colors flex-shrink-0">
-                                <span className="material-symbols-rounded text-[22px] flex-shrink-0">more_vert</span>
-                            </button>
+
                         </div>
                     </div>
 
