@@ -69,8 +69,6 @@ chrome.commands.onCommand.addListener((command) => {
         });
     }
 });
-    }
-});
 
 const ensureScriptInjectedAndActivate = async (tabId: number) => {
     try {
