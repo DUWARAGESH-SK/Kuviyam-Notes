@@ -10,7 +10,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const browser = (process.env.BROWSER as 'chrome' | 'firefox') || 'chrome';
 import fs from 'fs';
 
-const manifestPath = path.resolve(__dirname, `manifests/${browser}.json`);
+const platform = browser === 'firefox' ? 'firefox' : 'chromium';
+const manifestPath = path.resolve(__dirname, `platform/${platform}/manifest.json`);
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
 
@@ -22,6 +23,12 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
+  },
+  build: {
+    outDir: path.resolve(__dirname, `dist/${platform}`),
+    emptyOutDir: true,
+    minify: 'esbuild',      // esbuild avoids eval/new Function patterns that AMO flags
+    sourcemap: false,       // no source maps in production build
   },
   plugins: [
     react(),
