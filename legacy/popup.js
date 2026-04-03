@@ -119,7 +119,7 @@ function initDump() {
 
 function renderDumpList() {
   const listEl = document.getElementById("dumpPagesList");
-  listEl.innerHTML = "";
+  listEl.replaceChildren();
   const filters = getFilterState();
   const dumps = filterNotes(
     allNotes.filter((n) => n.type === "dump"),
@@ -235,7 +235,7 @@ function initHooks() {
 
 function renderHooksList() {
   const listEl = document.getElementById("hooksList");
-  listEl.innerHTML = "";
+  listEl.replaceChildren();
   const filters = getFilterState();
 
   const hooksForSite = allNotes.filter(
