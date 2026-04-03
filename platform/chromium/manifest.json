@@ -1,0 +1,74 @@
+{
+    "manifest_version": 3,
+    "name": "Kuviyam Notes",
+    "version": "1.0.0",
+    "description": "Kuviyam Notes — A lightweight, privacy-first note-taking extension with sticky note UI.",
+    "permissions": [
+        "storage",
+        "activeTab",
+        "scripting",
+        "contextMenus",
+        "sidePanel",
+        "tabs"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "action": {
+        "default_popup": "index.html",
+        "default_title": "Kuviyam Notes",
+        "default_icon": {
+            "16": "icons/icon-16.png",
+            "32": "icons/icon-32.png",
+            "48": "icons/icon-48.png",
+            "128": "icons/icon-128.png"
+        }
+    },
+    "icons": {
+        "16": "icons/icon-16.png",
+        "32": "icons/icon-32.png",
+        "48": "icons/icon-48.png",
+        "96": "icons/icon-96.png",
+        "128": "icons/icon-128.png"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "logo.png",
+                "sticky-notes-icon.svg",
+                "icons/icon-16.png",
+                "icons/icon-32.png",
+                "icons/icon-48.png",
+                "icons/icon-96.png",
+                "icons/icon-128.png"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ],
+    "background": {
+        "service_worker": "src/background/index.ts",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "src/content/index.tsx"
+            ]
+        }
+    ],
+    "commands": {
+        "toggle-panel": {
+            "suggested_key": {
+                "default": "Alt+Shift+P",
+                "mac": "Alt+Shift+P",
+                "windows": "Alt+Shift+P"
+            },
+            "description": "Toggle Kuviyam Floating Panel"
+        }
+    }
+}
