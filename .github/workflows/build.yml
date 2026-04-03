@@ -1,0 +1,116 @@
+name: Build & Package Extension
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ─── Lint & Type-Check ────────────────────────────────────────────────────
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc -b --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+  # ─── Build Chrome ─────────────────────────────────────────────────────────
+  build-chrome:
+    name: Build Chrome Extension
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for Chrome
+        run: npm run build:chrome
+        env:
+          BROWSER: chrome
+
+      - name: Upload Chrome artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuviyam-notes-chrome
+          path: kuviyam-notes-chrome.zip
+          retention-days: 30
+
+  # ─── Build Firefox ────────────────────────────────────────────────────────
+  build-firefox:
+    name: Build Firefox Extension
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for Firefox
+        run: npm run build:firefox
+        env:
+          BROWSER: firefox
+
+      - name: Upload Firefox artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuviyam-notes-firefox
+          path: kuviyam-notes-firefox.zip
+          retention-days: 30
+
+  # ─── GitHub Release (on version tags only) ────────────────────────────────
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-chrome, build-firefox]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download Chrome build
+        uses: actions/download-artifact@v4
+        with:
+          name: kuviyam-notes-chrome
+
+      - name: Download Firefox build
+        uses: actions/download-artifact@v4
+        with:
+          name: kuviyam-notes-firefox
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            kuviyam-notes-chrome.zip
+            kuviyam-notes-firefox.zip
+          generate_release_notes: true
