@@ -6,10 +6,14 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "tsc -b && vite build",
+    "build:chrome": "cross-env BROWSER=chrome tsc -b && cross-env BROWSER=chrome vite build && node scripts/package-extension.js chrome",
+    "build:firefox": "cross-env BROWSER=firefox tsc -b && cross-env BROWSER=firefox vite build && node scripts/package-extension.js firefox",
+    "package:chrome": "node scripts/package-extension.js chrome",
+    "package:firefox": "node scripts/package-extension.js firefox",
+    "wrap": "node scripts/wrap-content.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "watch": "vite build --watch",
-    "package": "npm run build && node package-extension.js"
+    "watch": "vite build --watch"
   },
   "dependencies": {
     "@types/jszip": "^3.4.0",
@@ -26,6 +30,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.23",
+    "cross-env": "^10.1.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
